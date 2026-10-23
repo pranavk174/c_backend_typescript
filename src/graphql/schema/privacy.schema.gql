@@ -1,8 +1,23 @@
 type Privacy {
   privacy_id: Int!
-  privacy_type: String!
-  entity_type: String!
+  privacy_type: PrivacyType!
+  entity_type: PrivacyField!
   users: [User!]!
+}
+
+enum PrivacyField {
+  profile_photo
+  status
+  story
+  online
+  last_seen
+}
+
+enum PrivacyType {
+  everyone
+  contacts
+  only_share_with
+  contacts_except
 }
 
 input PrivacyUserInput {

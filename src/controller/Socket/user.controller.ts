@@ -1,9 +1,9 @@
-import prisma from "../../../prisma/prisma-client";
+// import prisma from "../../../prisma/prisma-client";
+import prisma from "../../prisma/prisma-client.js";
 
-export const updateLastSeen = async(payload)=>{
-
-    try {
-        const update = await prisma.$queryRaw`
+export const updateLastSeen = async (payload) => {
+  try {
+    const update = await prisma.$queryRaw`
         
         INSERT INTO user_presence (
             updated_at,
@@ -11,11 +11,11 @@ export const updateLastSeen = async(payload)=>{
             user_id
             )
             
-            VALUES (
-            ${CURRENT_TIMESTAMP},
-            ${CURRENT_TIMESTAMP},
-            ${payload.userId}
-            )
+            -- VALUES (
+            -- ${CURRENT_TIMESTAMP},
+            -- ${CURRENT_TIMESTAMP},
+            -- ${payload.userId}
+            -- )
             
             ON CONFLICT (user_id)
             
@@ -25,10 +25,8 @@ export const updateLastSeen = async(payload)=>{
             updated_at = CURRENT_TIMESTAMP returning *;
 
         
-        `
-    } catch (error) {
-        return {
-    
-        }
-    }
-}
+        `;
+  } catch (error) {
+    return {};
+  }
+};

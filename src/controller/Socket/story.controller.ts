@@ -1,4 +1,4 @@
-import prisma from "../../../prisma/prisma-client.js";
+import prisma from "../../prisma/prisma-client.js";
 import { asyncSocketAPIHandeler } from "../../lib/util.js";
 import {
   NEW_NOTIFICATION,
@@ -15,14 +15,31 @@ import {
   chatSocketIds,
   getNotificationSockets,
 } from "../../utils/socket.helper.js";
+import {
+  socketCallback,
+  socketInterface,
+} from "../../utils/types/base.type.js";
+import {
+  chat_memberProps,
+  chatProps,
+  SendMessageData,
+  socketResponse,
+  userProps,
+} from "../../utils/types.js";
+import { StorySeen } from "../../utils/types/story.type.js";
 
 const { story, story_likes, chat, chat_member } = prisma;
 export const replyStory = asyncSocketAPIHandeler(
-  async (socket, payload, data, callback) => {
+  async (
+    socket: socketInterface,
+    payload: userProps,
+    data: SendMessageData,
+    callback: (data: socketCallback<socketResponse>) => void,
+  ) => {
     const { id, content } = data;
     logger.debug(payload, "payloadddddd");
     const storyData = await story.findFirst({
-      where: { id: parseInt(id), is_deleted: false },
+      where: { id: id, is_deleted: false },
     });
     if (!storyData) {
       return callback({
@@ -32,8 +49,8 @@ export const replyStory = asyncSocketAPIHandeler(
       });
     }
 
-    const chatid = await prisma.$queryRaw`
-        select chat_id from chat_member where member_id in (${parseInt(payload.userId)}, ${parseInt(storyData.user_id)}) GROUP BY chat_id
+    const chatid: chat_memberProps[] = await prisma.$queryRaw`
+        select chat_id from chat_member where member_id in (${payload.userId}, ${storyData.user_id}) GROUP BY chat_id
 HAVING COUNT(DISTINCT member_id) = 2;
         
         `;
@@ -66,14 +83,14 @@ HAVING COUNT(DISTINCT member_id) = 2;
 
       reply = await prisma.$queryRaw`
 insert into message (
-chat_id ,sender_id ,content ,story_id, created_at) values(${chatData.id} , ${parseInt(payload.userId)} , ${content}, ${parseInt(storyData.id)}, NOW()
+chat_id ,sender_id ,content ,story_id, created_at) values(${chatData.id} , ${payload.userId} , ${content}, ${storyData.id}, NOW()
 )
 
           `;
     } else {
       reply = await prisma.$queryRaw`
 insert into message (
-chat_id ,sender_id ,content ,story_id, created_at) values(${chatid[0].chat_id} , ${parseInt(payload.userId)} , ${content}, ${parseInt(storyData.id)}, NOW()
+chat_id ,sender_id ,content ,story_id, created_at) values(${chatid[0].chat_id} , ${payload.userId} , ${content}, ${storyData.id}, NOW()
 )
   `;
     }
@@ -103,12 +120,17 @@ chat_id ,sender_id ,content ,story_id, created_at) values(${chatid[0].chat_id} ,
 );
 
 export const seenStory = asyncSocketAPIHandeler(
-  async (socket, payload, data, callback) => {
+  async (
+    socket: socketInterface,
+    payload: userProps,
+    data: SendMessageData,
+    callback: (data: socketCallback<socketResponse>) => void,
+  ) => {
     const { id } = data;
     // logger.debug(payload, "payload data");
 
     const storyData = await story.findFirst({
-      where: { id: parseInt(id), is_deleted: false },
+      where: { id: id, is_deleted: false },
     });
     if (!storyData) {
       return callback({
@@ -125,9 +147,9 @@ export const seenStory = asyncSocketAPIHandeler(
       });
     }
 
-    const seenData = await prisma.$queryRaw`
+    const seenData: StorySeen[] = await prisma.$queryRaw`
         
-        select user_id from story_seen where story_id = ${parseInt(id)} and user_id = ${payload.userId};
+        select user_id from story_seen where story_id = ${id} and user_id = ${payload.userId};
         
         `;
 
@@ -142,9 +164,9 @@ export const seenStory = asyncSocketAPIHandeler(
     }
 
     // Mark the story as seen by creating an entry in a hypothetical "story_views" table
-    const seen = await prisma.story_seen.create({
+    const seen: StorySeen = await prisma.story_seen.create({
       data: {
-        story_id: parseInt(id),
+        story_id: id,
         user_id: payload.userId,
         seen_at: new Date(),
       },
@@ -167,9 +189,11 @@ export const seenStory = asyncSocketAPIHandeler(
 
     seen.profile_pic = payload.profile_pic;
     seen.name = payload.name;
-    socket.to(receiverSocketId).emit(STORY_SEEN, seen, (response) => {
-      logger.debug("emitted datat in responseeee");
-    });
+    socket
+      .to(receiverSocketId)
+      .emit(STORY_SEEN, seen, (response: socketResponse) => {
+        logger.debug("emitted datat in responseeee");
+      });
 
     return callback({
       message: "Story marked as seen",
@@ -179,7 +203,12 @@ export const seenStory = asyncSocketAPIHandeler(
   },
 );
 export const likeStory = asyncSocketAPIHandeler(
-  async (socket, payload, data, callback) => {
+  async (
+    socket: socketInterface,
+    payload: userProps,
+    data: SendMessageData,
+    callback: (data: socketCallback<socketResponse>) => void,
+  ) => {
     const { id, like, reaction_id } = data;
     if (!id || like === null || like === undefined) {
       return {
@@ -190,7 +219,7 @@ export const likeStory = asyncSocketAPIHandeler(
     }
 
     const storyData = await story.findFirst({
-      where: { id: parseInt(id), is_deleted: false },
+      where: { id: id, is_deleted: false },
     });
     if (!storyData) {
       return callback({
@@ -211,7 +240,7 @@ export const likeStory = asyncSocketAPIHandeler(
     const liked = await story_likes.upsert({
       where: {
         story_id_user_id: {
-          story_id: parseInt(id),
+          story_id: id,
           user_id: payload.userId,
         },
       },
@@ -221,7 +250,7 @@ export const likeStory = asyncSocketAPIHandeler(
         reaction_id: like === true ? reaction_id : null, // only set reaction_id if it's a like
       },
       create: {
-        story_id: parseInt(id),
+        story_id: id,
         user_id: payload.userId,
         reaction_id: like === true ? reaction_id : null,
         liked: true,
@@ -241,9 +270,11 @@ export const likeStory = asyncSocketAPIHandeler(
     // seen.profile_pic = payload.profile_pic;
     // seen.name = payload.name;
 
-    socket.to(receiverSocketId).emit(STORY_LIKE, liked, (response) => {
-      logger.debug("emitted datat in responseeee", response);
-    });
+    socket
+      .to(receiverSocketId)
+      .emit(STORY_LIKE, liked, (response: socketResponse) => {
+        logger.debug("emitted datat in responseeee", response);
+      });
 
     if (like) {
       const { notification } = await createNotification(

@@ -3,6 +3,7 @@ import { existsSync, mkdirSync } from "fs";
 import path from "path";
 import { v2 as cloudinary } from "cloudinary";
 import { logger } from "../../utils/logger.js";
+import { Request, Response } from "express";
 
 cloudinary.config({
   // eslint-disable-next-line no-undef
@@ -13,7 +14,7 @@ cloudinary.config({
 
 // POST /start-upload
 // Creates a temp folder for chunks and returns an uploadId
-export const start = async (req, res) => {
+export const start = async (req: Request, res: Response) => {
   try {
     const uploadId = crypto.randomUUID();
     await fs.mkdir(`upload/${uploadId}`, { recursive: true });
@@ -27,7 +28,7 @@ export const start = async (req, res) => {
 // POST /upload-chunk
 // Saves a single chunk to the temp folder
 // Body: { uploadId, index }  |  File: chunk (multipart)
-export const uploadChunk = async (req, res) => {
+export const uploadChunk = async (req: Request, res: Response) => {
   try {
     const { uploadId, index } = req.body;
     const file = req.file;
@@ -58,7 +59,7 @@ export const uploadChunk = async (req, res) => {
 // POST /finish-upload
 // Merges all chunks, uploads to Cloudinary, cleans up temp files
 // Body: { uploadId, extension }
-export const finishUpload = async (req, res) => {
+export const finishUpload = async (req: Request, res: Response) => {
   const { uploadId, extension } = req.body;
 
   if (!uploadId || !extension) {
@@ -107,7 +108,7 @@ export const finishUpload = async (req, res) => {
 // POST /cancel-upload
 // Deletes the temp folder for a given uploadId
 // Body: { uploadId }
-export const cancel = async (req, res) => {
+export const cancel = async (req: Request, res: Response) => {
   const { uploadId } = req.body;
 
   if (!uploadId) {
@@ -124,7 +125,7 @@ export const cancel = async (req, res) => {
 };
 
 // this api is simple srf upload krke string de deta hai , ooper wale se iska koi lena dena nhi hai.
-export const fileUpload = async (req, res) => {
+export const fileUpload = async (req: Request, res: Response) => {
   try {
     if (!req.file) {
       return res

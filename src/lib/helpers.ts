@@ -1,15 +1,25 @@
 import { chatSocketIds } from "../utils/socket.helper.js";
 import { createPubSub } from "graphql-yoga";
 import bcrypt from "bcrypt";
-import { Prisma } from "@prisma/client";
-import prisma from "../../prisma/prisma-client.js";
+import { Prisma, PrismaClient } from "@prisma/client";
+import prisma from "../prisma/prisma-client.js";
 import { logger } from "../utils/logger.js";
 import { AppError, BadRequestError } from "./errorHandler.js";
 import { numberex, stringex } from "./regex.js";
 import { asyncHandeler } from "./util.js";
-import { messageProps } from "../utils/types.js";
-export const checkMessageExists = async (prisma, message_ids) => {
-  const data = await prisma.$queryRaw`
+import {
+  chat_memberProps,
+  chatProps,
+  messageProps,
+  userProps,
+} from "../utils/types.js";
+import { OtpData } from "../utils/types/graphqltypes/user.type.js";
+import { JwtPayload } from "jsonwebtoken";
+export const checkMessageExists = async (
+  prisma: PrismaClient,
+  message_ids: number[],
+) => {
+  const data = await prisma.$queryRaw<messageProps[]>`
 
     SELECT id,chat_id,sender_id,is_deleted
     FROM message
@@ -28,7 +38,7 @@ export const checkMessageExists = async (prisma, message_ids) => {
   return data;
 };
 
-export const filterUnseenMessage = async (message_ids) => {
+export const filterUnseenMessage = async (message_ids: number[]) => {
   if (message_ids.length < 1) {
     throw new Error("Message id is missing");
   }
@@ -71,8 +81,8 @@ export const findMessage = async (
   return data;
 };
 
-export const chekUserExists = async (prisma, users) => {
-  const data = await prisma.$queryRaw`
+export const chekUserExists = async (prisma: PrismaClient, users: number[]) => {
+  const data = await prisma.$queryRaw<userProps[]>`
     
     
     select id from users where id = ANY(${users}) and account_status = 'active'
@@ -86,14 +96,18 @@ export const chekUserExists = async (prisma, users) => {
   return data;
 };
 
-export const checkMemeberExists = async (prisma, chat_id, user_id) => {
+export const checkMemeberExists = async (
+  prisma: PrismaClient,
+  chat_id: number,
+  user_id: number,
+) => {
   // logger.debug(chat_id, user_id, "======");
-  const data = await prisma.$queryRaw`
+  const data = await prisma.$queryRaw<chat_memberProps[]>`
 
     SELECT member_id
     FROM chat_member
 
-    WHERE chat_id = ${parseInt(chat_id)}
+    WHERE chat_id = ${chat_id}
     AND member_id = ${user_id}
 
   `;
@@ -101,9 +115,13 @@ export const checkMemeberExists = async (prisma, chat_id, user_id) => {
   return data[0];
 };
 
-export const checkChatExists = async (prisma, user_id, members) => {
+export const checkChatExists = async (
+  prisma: PrismaClient,
+  user_id: number,
+  members: number[],
+): Promise<chat_memberProps[]> => {
   // logger.debug(user_id, "===========", members);
-  const data = await prisma.$queryRaw`
+  const data = await prisma.$queryRaw<chat_memberProps[]>`
     
 
     
@@ -122,10 +140,24 @@ HAVING
   return data;
 };
 
-export const createChat = asyncHandeler(
-  async ({ payload, reciever_id, chat_type = "private", prisma }) => {
+export const createChat = asyncHandeler<
+  {
+    payload: userProps | JwtPayload;
+    reciever_id: number[];
+    chat_type?: "private" | "group";
+    prisma: Prisma.TransactionClient;
+  },
+  chatProps[]
+>(
+  async ({
+    payload,
+    reciever_id,
+    chat_type = "private",
+    prisma,
+  }): Promise<chatProps[]> => {
+    let result;
     if (chat_type === "group") {
-      const created = await prisma.$queryRaw`
+      const created = await prisma.$queryRaw<chatProps[]>`
       
       insert into chat (chat_type) values('group') returning id ;
       
@@ -143,9 +175,11 @@ export const createChat = asyncHandeler(
       insert into chat_member (chat_id , member_id , role) values ${Prisma.join(members)}
       `;
 
+      result = created;
+
       return created;
     } else {
-      const data = await prisma.$queryRaw`
+      const data = await prisma.$queryRaw<chatProps[]>`
           
           insert into chat (chat_type) values(${chat_type})  RETURNING id;
 
@@ -159,13 +193,13 @@ export const createChat = asyncHandeler(
           insert into chat_member (member_id ,chat_id ) values(${payload.userId},${chatId}),(${reciever_id},${chatId})
           
           `;
-
-      return chatId;
+      result = data;
+      return data;
     }
   },
 );
 
-export const chekOTP = async (otp, record) => {
+export const chekOTP = async (otp: string, record: OtpData) => {
   if (!record) {
     throw new AppError({
       message: "OTP not found",
@@ -194,7 +228,7 @@ export const chekOTP = async (otp, record) => {
   return true;
 };
 
-export const getSockets = (member) => {
+export const getSockets = (member: string) => {
   const receiverSocketId = chatSocketIds.get(String(member));
   return receiverSocketId;
 };

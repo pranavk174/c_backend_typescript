@@ -44,3 +44,9 @@ export interface functionCallProps<T> {
   data: T;
   callback: socketCallback<T>;
 }
+
+export interface Seen {
+  seen_id: number;
+  user_id: number;
+  seen_at: Date;
+}

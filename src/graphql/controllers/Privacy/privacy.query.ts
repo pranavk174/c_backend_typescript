@@ -1,7 +1,8 @@
-import { AppError } from "../../../lib/errorHandler.js";
-import prisma from "../../../../prisma/prisma-client.js";
-import { asyncGraphqlAPIHandeler } from "../../../lib/util.js";
-import { logger } from "../../../utils/logger.js";
+import { AppError } from "@/lib/errorHandler.js";
+import { asyncGraphqlAPIHandeler } from "@/lib/util.js";
+import prisma from "@/prisma/prisma-client.js";
+import { logger } from "@/utils/logger.js";
+import { privacyArgumentProps } from "@/utils/types/graphqltypes/privacy.type.js";
 
 const { privacy_user, privacy_settings } = prisma;
 export const getPrivacySettingsQuery = asyncGraphqlAPIHandeler(
@@ -36,7 +37,7 @@ export const getPrivacySettingsQuery = asyncGraphqlAPIHandeler(
 );
 
 export const getPrivacUsersQuery = asyncGraphqlAPIHandeler(
-  async (_, { privacy_id }) => {
+  async (_, { privacy_id }: privacyArgumentProps) => {
     const privacyUsers = await prisma.$queryRaw`
                                 select u.id,u.name
                                 from users u

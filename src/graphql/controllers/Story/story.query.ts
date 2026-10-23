@@ -1,16 +1,22 @@
-import { AppError } from "../../../lib/errorHandler.js";
-import prisma from "../../../../prisma/prisma-client.js";
-import { asyncGraphqlAPIHandeler } from "../../../lib/util.js";
-import { logger } from "../../../utils/logger.js";
+import { AppError } from "@/lib/errorHandler.js";
+import { asyncGraphqlAPIHandeler } from "@/lib/util.js";
+import prisma from "@/prisma/prisma-client.js";
+import { logger } from "@/utils/logger.js";
+import {
+  storyArgumentProps,
+  storyResponseProps,
+  GroupedStories,
+  GroupedUserStoriess,
+} from "@/utils/types/graphqltypes/story.type.js";
 
 const { story } = prisma;
 
 export const getStoryByIdQuery = asyncGraphqlAPIHandeler(
-  async (_, { id }, context) => {
+  async (_, { id }: storyArgumentProps, context) => {
     const payload = context.user;
     const storyData = await story.findFirst({
       where: {
-        id: parseInt(id),
+        id: id,
         user_id: payload.userId,
         is_deleted: false,
       },
@@ -55,7 +61,7 @@ export const getAllStoriesQuery = asyncGraphqlAPIHandeler(
   async (_, __, context) => {
     const payload = context.user;
 
-    const myStories = await prisma.$queryRaw`
+    const myStories = await prisma.$queryRaw<storyResponseProps[]>`
 
 SELECT 
     s.id,
@@ -134,7 +140,7 @@ ORDER BY
 
     // logger.debug(JSON.stringify(myStories, null, 2), "my SToriessssss");
 
-    const stories = await prisma.$queryRaw`
+    const stories = await prisma.$queryRaw<storyResponseProps[]>`
 SELECT 
     s.*,
     u.name,
@@ -215,7 +221,7 @@ ORDER BY
     s.created_at DESC;
 `;
 
-    const grouped = stories.reduce((acc, story) => {
+    const grouped = stories.reduce((acc: GroupedStories, story) => {
       if (!acc[story.user_id]) {
         acc[story.user_id] = {
           user_id: story.user_id,
@@ -238,7 +244,7 @@ ORDER BY
       return acc;
     }, {});
 
-    const grouped2 = myStories.reduce((acc, story) => {
+    const grouped2 = myStories.reduce((acc: GroupedUserStoriess, story) => {
       if (!acc[story.user_id]) {
         acc[story.user_id] = {
           user_id: story.user_id,
@@ -254,7 +260,6 @@ ORDER BY
         text_data: story.text_data,
         content: story.content,
         created_at: story.created_at,
-
         interactions: story.interactions || [],
       });
 

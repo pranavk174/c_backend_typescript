@@ -16,6 +16,7 @@ import {
 import { AppError } from "./errorHandler.js";
 import bcrypt from "bcrypt";
 import { RateLimiterMemory } from "rate-limiter-flexible";
+import { ctxProps } from "../utils/types/graphqltypes/chat.type.js";
 
 export const isDev = process.env.NODE_ENV !== "production";
 export const asyncGraphqlAPIHandeler =
@@ -23,7 +24,7 @@ export const asyncGraphqlAPIHandeler =
   async (
     parent: unknown,
     input: T,
-    context: userProps,
+    context: ctxProps,
     info: GraphQLResolveInfo,
   ): Promise<unknown> => {
     try {
@@ -110,8 +111,8 @@ export const asyncGraphqlAPIHandeler =
   };
 
 export const asyncHandeler =
-  <T>(method: asyncMethodsType<T>) =>
-  async (data: T) => {
+  <T, R>(method: asyncMethodsType<T, R>) =>
+  async (data: T): Promise<R> => {
     try {
       return await method(data);
     } catch (error) {
@@ -120,12 +121,6 @@ export const asyncHandeler =
 
       logger.debug(message, "error in handler");
       throw error;
-
-      // throw new AppError({
-      //   message: error.message,
-      //   status: 500,
-      //   code: error.code,
-      // });
     }
   };
 

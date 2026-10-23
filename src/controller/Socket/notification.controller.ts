@@ -1,4 +1,4 @@
-import prisma from "../../../prisma/prisma-client.js";
+import prisma from "../../prisma/prisma-client.js";
 import { Prisma } from "@prisma/client";
 
 import { SEEN_NOTIFICATION } from "../../utils/events.js";
@@ -10,6 +10,7 @@ import {
 import { userProps } from "../../utils/types.js";
 import {
   notificationInputProps,
+  Seen_notification,
   seenNotificationSocketResponse,
 } from "../../utils/types/notification.types.js";
 import { Notification } from "../../utils/dummy.js";
@@ -47,7 +48,7 @@ export const seenNotification = asyncSocketAPIHandeler(
           ignored: notification_ids.length,
         };
       }
-      const alreadySeen = await tx.$queryRaw`
+      const alreadySeen: Seen_notification[] = await tx.$queryRaw`
           select * from notification_seen where notification_id = ANY(${validIds}::int[])
           `;
 

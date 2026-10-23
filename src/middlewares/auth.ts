@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 import cookie from "cookie";
 import { validateCookie } from "../lib/tokenvalidator.js";
 import cors from "cors";
-import prisma from "../../prisma/prisma-client.js";
+import prisma from "../prisma/prisma-client.js";
 import { allowedOrigins } from "../lib/helpers.js";
 import { logger } from "../utils/logger.js";
 

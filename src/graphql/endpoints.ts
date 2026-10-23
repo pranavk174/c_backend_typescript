@@ -10,6 +10,7 @@ import { useCookies } from "@whatwg-node/server-plugin-cookies";
 import mergedResolver from "./resolvers/merged.resolver.js";
 import { AppError } from "../lib/errorHandler.js";
 import { logger } from "../utils/logger.js";
+import { Response, Request } from "express";
 
 const baseSchema = readFileSync(
   new URL("./schema/base.schema.gql", import.meta.url),
@@ -62,7 +63,7 @@ export const yoga = createYoga({
 
   graphqlEndpoint: "/graphql",
 
-  context: ({ req, res }) => ({
+  context: ({ req, res }: { req: Request; res: Response }) => ({
     req,
     res,
   }),

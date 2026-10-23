@@ -1,13 +1,16 @@
 /* eslint-disable no-undef */
-import prisma from "../../../../prisma/prisma-client.js";
 
-import { AppError } from "../../../lib/errorHandler.js";
-
-import { asyncGraphqlAPIHandeler } from "../../../lib/util.js";
+import { AppError } from "@/lib/errorHandler.js";
+import { asyncGraphqlAPIHandeler } from "@/lib/util.js";
+import prisma from "@/prisma/prisma-client.js";
+import {
+  privacyArgumentProps,
+  privacyInputProps,
+} from "@/utils/types/graphqltypes/privacy.type.js";
 
 const { privacy_user, privacy_settings } = prisma;
 export const updatePrivacySettingsMutation = asyncGraphqlAPIHandeler(
-  async (_, { privacy_type, entity_type }, ctx) => {
+  async (_, { privacy_type, entity_type }: privacyArgumentProps, ctx) => {
     const payload = ctx.user;
     const userId = payload.userId;
 
@@ -24,18 +27,18 @@ export const updatePrivacySettingsMutation = asyncGraphqlAPIHandeler(
       where: {
         user_id_entity_type: {
           user_id: userId,
-          entity_type: entity_type.toString(),
+          entity_type: entity_type,
         },
       },
       update: {
-        privacy_type: privacy_type.toString(),
-        entity_type: entity_type.toString(),
+        privacy_type: privacy_type,
+        entity_type: entity_type,
         created_at: new Date(),
       },
       create: {
         user_id: userId,
-        privacy_type: privacy_type.toString(),
-        entity_type: entity_type.toString(),
+        privacy_type: privacy_type,
+        entity_type: entity_type,
         created_at: new Date(),
       },
     });
@@ -49,7 +52,7 @@ export const updatePrivacySettingsMutation = asyncGraphqlAPIHandeler(
 );
 
 export const updatePrivacyUsersMutation = asyncGraphqlAPIHandeler(
-  async (_, { input: { users, privacy_id } }, ctx) => {
+  async (_, { input: { users, privacy_id } }: privacyInputProps, ctx) => {
     const payload = ctx.user;
 
     const userId = payload.userId;
@@ -62,7 +65,7 @@ export const updatePrivacyUsersMutation = asyncGraphqlAPIHandeler(
       });
     }
 
-    if (users.includes(userId.toString())) {
+    if (users.includes(userId)) {
       throw new AppError({
         message: "User cannot be in the list of privacy users",
         status: 400,
@@ -75,18 +78,18 @@ export const updatePrivacyUsersMutation = asyncGraphqlAPIHandeler(
         await privacy_user.upsert({
           where: {
             privacy_id_target_user_id: {
-              privacy_id: parseInt(privacy_id),
-              target_user_id: parseInt(user),
+              privacy_id: privacy_id,
+              target_user_id: user,
             },
           },
           update: {
-            privacy_id: parseInt(privacy_id),
-            target_user_id: parseInt(user),
+            privacy_id: privacy_id,
+            target_user_id: user,
             created_at: new Date(),
           },
           create: {
-            privacy_id: parseInt(privacy_id),
-            target_user_id: parseInt(user),
+            privacy_id: privacy_id,
+            target_user_id: user,
             created_at: new Date(),
           },
         });

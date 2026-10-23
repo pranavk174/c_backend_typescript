@@ -1,14 +1,28 @@
 /* eslint-disable no-undef */
-import prisma from "../../../../prisma/prisma-client.js";
 
-import { AppError } from "../../../lib/errorHandler.js";
-
-import { logger } from "../../../utils/logger.js";
-import { asyncGraphqlAPIHandeler } from "../../../lib/util.js";
+import {
+  AppError,
+  BadRequestError,
+  NotFoundError,
+  ForbiddenError,
+} from "@/lib/errorHandler.js";
+import { asyncGraphqlAPIHandeler } from "@/lib/util.js";
+import prisma from "@/prisma/prisma-client.js";
+import { logger } from "@/utils/logger.js";
+import { mediaProps, chat_memberProps } from "@/utils/types.js";
+import {
+  storyInputProps,
+  storyArgumentProps,
+} from "@/utils/types/graphqltypes/story.type.js";
+import { StorySeen } from "@/utils/types/story.type.js";
 
 const { story, story_likes, chat, chat_member } = prisma;
 export const createStoryMutation = asyncGraphqlAPIHandeler(
-  async (_, { input: { content, text_data, message_ids = [] } }, context) => {
+  async (
+    _,
+    { input: { content, text_data, message_ids = [] } }: storyInputProps,
+    context,
+  ) => {
     if ((!content || content.trim() === "") && message_ids.length === 0) {
       throw new AppError({
         message: "Content is required",
@@ -20,7 +34,7 @@ export const createStoryMutation = asyncGraphqlAPIHandeler(
     const payload = context.user;
 
     if (message_ids.length > 0) {
-      const media = await prisma.$queryRaw`
+      const media = await prisma.$queryRaw<mediaProps[]>`
           
           select * from attachment where message_id = ANY(${message_ids})
           
@@ -56,7 +70,7 @@ export const createStoryMutation = asyncGraphqlAPIHandeler(
 );
 
 export const likeStoryMutation = asyncGraphqlAPIHandeler(
-  async (_, { input: { id, like, reaction_id } }, context) => {
+  async (_, { input: { id, like, reaction_id } }: storyInputProps, context) => {
     if (!id || like === null || like === undefined) {
       throw new AppError({
         message: "Like value is required",
@@ -68,7 +82,7 @@ export const likeStoryMutation = asyncGraphqlAPIHandeler(
     const payload = context.user;
 
     const storyData = await story.findFirst({
-      where: { id: parseInt(id), is_deleted: false },
+      where: { id: id, is_deleted: false },
     });
     if (!storyData) {
       throw new AppError({
@@ -89,7 +103,7 @@ export const likeStoryMutation = asyncGraphqlAPIHandeler(
     await story_likes.upsert({
       where: {
         story_id_user_id: {
-          story_id: parseInt(id),
+          story_id: id,
           user_id: payload.userId,
         },
       },
@@ -99,7 +113,7 @@ export const likeStoryMutation = asyncGraphqlAPIHandeler(
         reaction_id: like === true ? reaction_id : null, // only set reaction_id if it's a like
       },
       create: {
-        story_id: parseInt(id),
+        story_id: id,
         user_id: payload.userId,
         reaction_id: like === true ? reaction_id : null,
         liked: true,
@@ -116,7 +130,7 @@ export const likeStoryMutation = asyncGraphqlAPIHandeler(
 );
 
 export const seenStoryMutation = asyncGraphqlAPIHandeler(
-  async (_, { id }, context) => {
+  async (_, { id }: storyArgumentProps, context) => {
     if (!id) {
       throw new AppError({
         message: "Story ID is required",
@@ -127,7 +141,7 @@ export const seenStoryMutation = asyncGraphqlAPIHandeler(
 
     const payload = context.user;
     const storyData = await story.findFirst({
-      where: { id: parseInt(id), is_deleted: false },
+      where: { id: id, is_deleted: false },
     });
     if (!storyData) {
       throw new AppError({
@@ -144,9 +158,9 @@ export const seenStoryMutation = asyncGraphqlAPIHandeler(
       });
     }
 
-    const seenData = await prisma.$queryRaw`
+    const seenData = await prisma.$queryRaw<StorySeen[]>`
         
-        select user_id from story_seen where story_id = ${parseInt(id)} and user_id = ${payload.userId};
+        select user_id from story_seen where story_id = ${id} and user_id = ${payload.userId};
         
         `;
 
@@ -161,7 +175,7 @@ export const seenStoryMutation = asyncGraphqlAPIHandeler(
     // Mark the story as seen by creating an entry in a hypothetical "story_views" table
     await prisma.story_seen.create({
       data: {
-        story_id: parseInt(id),
+        story_id: id,
         user_id: payload.userId,
         seen_at: new Date(),
       },
@@ -176,7 +190,7 @@ export const seenStoryMutation = asyncGraphqlAPIHandeler(
 );
 
 export const replyToStoryMutation = asyncGraphqlAPIHandeler(
-  async (_, { id, content }, context) => {
+  async (_, { id, content }: storyArgumentProps, context) => {
     if (!content || content.trim() === "") {
       throw new BadRequestError("Content is required");
     }
@@ -185,14 +199,14 @@ export const replyToStoryMutation = asyncGraphqlAPIHandeler(
 
     logger.debug(payload, "payloadddddd");
     const storyData = await story.findFirst({
-      where: { id: parseInt(id), is_deleted: false },
+      where: { id: id, is_deleted: false },
     });
     if (!storyData) {
       throw new NotFoundError("Story not found");
     }
 
-    let chatid = await prisma.$queryRaw`
-        select chat_id from chat_member where member_id in (${parseInt(payload.userId)}, ${parseInt(storyData.user_id)}) GROUP BY chat_id
+    let chatid = await prisma.$queryRaw<chat_memberProps[]>`
+        select chat_id from chat_member where member_id in (${payload.userId}, ${storyData.user_id}) GROUP BY chat_id
 HAVING COUNT(DISTINCT member_id) = 2;
         
         `;
@@ -222,14 +236,14 @@ HAVING COUNT(DISTINCT member_id) = 2;
         ],
       });
 
-      chatid = chatData.id;
+      // chatid = chatData.id;
     }
 
     // const reply = await prisma.chat_member.
 
     const reply = await prisma.$queryRaw`
 insert into message (
-chat_id ,sender_id ,content ,story_id, created_at) values(${chatid[0].chat_id} , ${parseInt(payload.userId)} , ${content}, ${parseInt(storyData.id)}, NOW()
+chat_id ,sender_id ,content ,story_id, created_at) values(${chatid[0].chat_id} , ${payload.userId} , ${content}, ${storyData.id}, NOW()
 )
   `;
 
@@ -243,14 +257,18 @@ chat_id ,sender_id ,content ,story_id, created_at) values(${chatid[0].chat_id} ,
 );
 
 export const forwardStoryMutation = asyncGraphqlAPIHandeler(
-  async (_, { input: { storyId, targets, message } }, context) => {
+  async (
+    _,
+    { input: { storyId, targets, message } }: storyInputProps,
+    context,
+  ) => {
     if (!targets || targets.length === 0) {
       throw new BadRequestError("At least one target is required");
     }
 
     const payload = context.user;
     const storyData = await story.findFirst({
-      where: { id: parseInt(storyId), is_deleted: false },
+      where: { id: storyId, is_deleted: false },
     });
 
     if (!storyData) {
@@ -283,20 +301,20 @@ export const forwardStoryMutation = asyncGraphqlAPIHandeler(
             });
             await prisma.$queryRaw`
                 insert into message (
-                  chat_id ,sender_id ,content ,story_id, created_at) values(${parseInt(chatData.id)} , ${parseInt(payload.userId)} , ${message}, ${parseInt(storyData.id)}, NOW()
+                  chat_id ,sender_id ,content ,story_id, created_at) values(${chatData.id} , ${payload.userId} , ${message}, ${storyData.id}, NOW()
                 )
                 `;
           } else {
             await prisma.$queryRaw`
                 insert into message (
-                  chat_id ,sender_id ,content ,story_id, created_at) values(${parseInt(target.chatId)} , ${parseInt(payload.userId)} , ${message}, ${parseInt(storyData.id)}, NOW()
+                  chat_id ,sender_id ,content ,story_id, created_at) values(${target.chatId} , ${payload.userId} , ${message}, ${storyData.id}, NOW()
                 )
                 `;
           }
         } else if (target.type === "group") {
           const isMember = await chat_member.findFirst({
             where: {
-              chat_id: parseInt(target.chatId),
+              chat_id: target.chatId,
               member_id: payload.userId,
             },
           });
@@ -309,7 +327,7 @@ export const forwardStoryMutation = asyncGraphqlAPIHandeler(
 
           await prisma.$queryRaw`
                 insert into message (
-                  chat_id ,sender_id ,content ,story_id, created_at) values(${parseInt(target.chatId)} , ${parseInt(payload.userId)} , ${message}, ${parseInt(storyData.id)}, NOW()
+                  chat_id ,sender_id ,content ,story_id, created_at) values(${target.chatId} , ${payload.userId} , ${message}, ${storyData.id}, NOW()
                 )
                 `;
         }
@@ -325,10 +343,10 @@ export const forwardStoryMutation = asyncGraphqlAPIHandeler(
 );
 
 export const deleteStoryMutation = asyncGraphqlAPIHandeler(
-  async (_, { id }, context) => {
+  async (_, { id }: storyArgumentProps, context) => {
     const payload = context.user;
     const storyData = await story.findFirst({
-      where: { id: parseInt(id), is_deleted: false },
+      where: { id: id, is_deleted: false },
     });
     if (!storyData) {
       throw new NotFoundError("Story not found");
@@ -337,7 +355,7 @@ export const deleteStoryMutation = asyncGraphqlAPIHandeler(
       throw new ForbiddenError("You can only delete your own story");
     }
     await story.update({
-      where: { id: parseInt(id) },
+      where: { id: id },
       data: { is_deleted: true },
     });
 

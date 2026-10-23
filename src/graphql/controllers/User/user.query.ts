@@ -1,5 +1,5 @@
 import { AppError } from "../../../lib/errorHandler.js";
-import prisma from "../../../../prisma/prisma-client.js";
+import prisma from "../../../prisma/prisma-client.js";
 import { asyncGraphqlAPIHandeler } from "../../../lib/util.js";
 export const getUserQuery = asyncGraphqlAPIHandeler(async (_, __, context) => {
   const payload = context.user;

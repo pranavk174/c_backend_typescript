@@ -2,12 +2,13 @@ export const chatSocketIds = new Map();
 export const notificationSocketIds = new Map();
 export const storySocketIds = new Map();
 export const onlineUsers = new Set();
-import prisma from "../../prisma/prisma-client.js";
+import prisma from "../prisma/prisma-client.js";
 import { Prisma } from "@prisma/client";
 import { ONLINE_USERS, SEEN_NOTIFICATION } from "./events.js";
 
 import { logger } from "./logger.js";
 import { chatNamespace } from "../index.js";
+import { userProps } from "./types.js";
 
 export const checkBlocked = async (user_id, otherUserId) => {
   try {
@@ -245,11 +246,11 @@ export const sendUsers = async (socket, payload) => {
 };
 
 export const createNotification = async (
-  reciever_id,
-  payload,
-  type,
-  message,
-  reference_id = null,
+  reciever_id: number,
+  payload: userProps,
+  type: string,
+  message: string,
+  reference_id: number | null = null,
 ) => {
   try {
     const res = await prisma.$queryRaw`

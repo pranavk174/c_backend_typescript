@@ -1,13 +1,13 @@
 /* eslint-disable no-undef */
-import prisma from "../../../../prisma/prisma-client.js";
 
-import { asyncGraphqlAPIHandeler } from "../../../lib/util.js";
-
+import { asyncGraphqlAPIHandeler } from "@/lib/util.js";
+import prisma from "@/prisma/prisma-client.js";
+import { Notification } from "@/utils/types/notification.types.js";
 export const getNotificationQUery = asyncGraphqlAPIHandeler(
   async (_, __, ctx) => {
     const payload = ctx.user;
 
-    const res = await prisma.$queryRaw`
+    const res = await prisma.$queryRaw<Notification[]>`
           
           
        SELECT 
@@ -28,12 +28,12 @@ export const getNotificationQUery = asyncGraphqlAPIHandeler(
           
           `;
 
-    const notifications = res.reduce((acc, item) => {
+    const notifications = res.reduce((acc: Notification[], item) => {
       const data = {
         notification_id: item.notification_id,
         notification_type: item.notification_type,
         name: item.name,
-        message: item.metadata.message,
+        message: item.metadata?.message,
         time: item.created_at,
         profile_pic: item.profile_pic,
         reference_id: item.reference_id,

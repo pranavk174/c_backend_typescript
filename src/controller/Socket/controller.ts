@@ -5,7 +5,8 @@ import {
   notificationSocketIds,
 } from "../../utils/socket.helper.js";
 import { notificationNamespace } from "../../index.js";
-import prisma from "../../../prisma/prisma-client.js";
+
+import prisma from "../../prisma/prisma-client.js";
 import {
   checkMessageExists,
   chekUserExists,
@@ -14,18 +15,7 @@ import {
 } from "../../lib/helpers.js";
 
 import { logger } from "../../utils/logger.js";
-import {
-  REFETCH_CHATS,
-  MESSAGE_REACTION,
-  NEW_MESSAGE,
-  ERROR,
-  MESSAGE_SEEN,
-  NEW_NOTIFICATION,
-  NEW_MESSAGE_ALERT,
-  EDIT_MESSAGE,
-  START_TYPING,
-  STOP_TYPING,
-} from "../../utils/events.js";
+
 import { asyncSocketAPIHandeler } from "../../lib/util.js";
 import {
   AttachmentProps,
@@ -35,8 +25,6 @@ import {
   MessageReaction,
   ReactionRow,
   SendMessageData,
-  // socketCallback,
-  // socketInterface,
   socketResponse,
   userProps,
 } from "../../utils/types.js";
@@ -46,7 +34,19 @@ import {
   socketInterface,
 } from "../../utils/types/base.type.js";
 
-import { Notification } from "../../utils/dummy.js";
+import { Notification } from "@/utils/types/notification.types.js";
+import {
+  REFETCH_CHATS,
+  NEW_NOTIFICATION,
+  NEW_MESSAGE_ALERT,
+  ERROR,
+  NEW_MESSAGE,
+  MESSAGE_REACTION,
+  MESSAGE_SEEN,
+  EDIT_MESSAGE,
+  START_TYPING,
+  STOP_TYPING,
+} from "@/utils/events.js";
 export const sendMessage = asyncSocketAPIHandeler(
   async (
     socket: socketInterface,
@@ -75,8 +75,8 @@ export const sendMessage = asyncSocketAPIHandeler(
 
     // if(reciever_ids && reciever_ids.incldes(payload.userID))
 
-    let chatId = null;
-    let chat_id = null;
+    let chatId;
+    let chat_id;
     if (chat_ids && chat_ids.length > 0) {
       chatId = chat_ids[0];
       chat_id = chat_ids[0];
@@ -85,7 +85,7 @@ export const sendMessage = asyncSocketAPIHandeler(
 
     if (chat_type === "private") {
       if (!chat_id) {
-        const reciever_id = parseInt(reciever_ids[0]);
+        const reciever_id = reciever_ids[0];
         const reciever = await chekUserExists(prisma, reciever_ids);
 
         if (reciever.length < 1) {
@@ -122,6 +122,14 @@ export const sendMessage = asyncSocketAPIHandeler(
           chatId = chatExists[0].chat_id;
         }
       }
+    }
+
+    if (!chatId) {
+      return callback({
+        message: "chatId is mising",
+        status: 400,
+        success: false,
+      });
     }
 
     if (client_msg_id) {
@@ -180,10 +188,10 @@ export const sendMessage = asyncSocketAPIHandeler(
             OR: [
               {
                 user_id: payload.userId,
-                blocked_user_id: parseInt(reciever_id),
+                blocked_user_id: reciever_id,
               },
               {
-                user_id: parseInt(reciever_id),
+                user_id: reciever_id,
                 blocked_user_id: payload.userId,
               },
             ],

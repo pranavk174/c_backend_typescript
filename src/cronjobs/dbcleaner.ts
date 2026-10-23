@@ -1,8 +1,7 @@
-
 import cron from "node-cron";
 
-import prisma from "../../prisma/prisma-client.js";
-import { logger } from "../utils/logger.js";
+import prisma from "../prisma/prisma-client.js";
+import { logger } from "@/utils/logger.js";
 cron.schedule("0 0 * * *", async () => {
   logger.debug("triggered cronjob");
   try {
@@ -13,6 +12,7 @@ cron.schedule("0 0 * * *", async () => {
 
     logger.debug("unwanted data deleted");
   } catch (error) {
-    logger.error("error in db clean job:", error.message);
+    if (error instanceof Error)
+      logger.error("error in db clean job:", error.message);
   }
 });

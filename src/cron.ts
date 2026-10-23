@@ -4,7 +4,7 @@ import { logger } from "./utils/logger.js";
 cron.schedule("*/5 * * * *", async () => {
   logger.debug("triggered cronjob");
   try {
-    const response = await fetch(process.env.HEALTH_URL);
+    const response = await fetch(process.env.HEALTH_URL ?? "");
 
     if (!response.ok) {
       throw new Error(`HTTP Error: ${response.status}`);
@@ -12,6 +12,7 @@ cron.schedule("*/5 * * * *", async () => {
 
     console.log("Health check successful");
   } catch (error) {
-    console.error("Health check failed:", error.message);
+    if (error instanceof Error)
+      console.error("Health check failed:", error.message);
   }
 });

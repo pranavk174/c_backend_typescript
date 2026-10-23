@@ -6,7 +6,7 @@ import { GraphQLSchemaWithContext } from "graphql-yoga";
 export type asyncGraphQlMethodsType<T> = (
   parent: unknown,
   input: T,
-  context: userProps,
+  context: ctxProps,
   info: GraphQLResolveInfo,
 ) => Promise<unknown>;
 
@@ -18,6 +18,7 @@ export interface userProps {
   cover_pic?: string | null;
   bio?: string;
   email: string;
+  device_id: string;
 }
 export interface socketInterface extends Socket {
   user: userProps;
@@ -42,9 +43,11 @@ export type SocketMethod<T, R> = (
   callback: (data: socketCallback<R>) => void,
 ) => Promise<void | socketCallback<T | R>>;
 
-export type asyncMethodsType<T> = (data: T) => Promise<void>;
+export type asyncMethodsType<T, R> = (data: T) => Promise<R>;
 
 import { GraphQLError } from "graphql";
+import { ctxProps } from "./types/graphqltypes/chat.type.js";
+import { JwtPayload } from "jsonwebtoken";
 
 export interface AppErrorOptions {
   message: string;
@@ -63,19 +66,39 @@ export interface functionCallProps<T> {
 
 export interface SendMessageData {
   content: string;
+  id: number;
   media: mediaProps[];
   chat_ids: number[];
   client_msg_id: string;
-  reciever_ids: string[];
+  reciever_ids: number[];
   chat_type?: string;
   message_ids: number[];
   react_id?: number;
   chat_id?: number;
   reciever_id?: number;
+  like: boolean;
+  reaction_id: number;
 }
 
 export interface chatProps {
   id: number;
+  chat_type: "private" | "group";
+  created_at: Date;
+  updated_at: Date;
+  is_deleted: boolean;
+  deleted_at: Date | null;
+}
+
+export interface AllchatProps extends chatProps {
+  user_id: number;
+  isOnline: boolean;
+  last_message_at: Date;
+}
+
+export interface allgroupChatProps extends chatProps {
+  name: string;
+  chat_id: number;
+  last_message_at: Date;
 }
 
 export interface messageProps {
@@ -99,6 +122,11 @@ export interface MessageReaction {
   user_id: number;
   created_at: Date;
   updated_at: Date;
+}
+
+export interface chat_memberProps {
+  chat_id: number;
+  member_id: number;
 }
 
 // export interface SendMessageData {

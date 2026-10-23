@@ -1,10 +1,19 @@
 /* eslint-disable no-undef */
-import prisma from "../../../../prisma/prisma-client.js";
-
-import { asyncGraphqlAPIHandeler } from "../../../lib/util.js";
+import { AppError } from "@/lib/errorHandler.js";
+import { asyncGraphqlAPIHandeler } from "@/lib/util.js";
+import prisma from "@/prisma/prisma-client.js";
+import { logger } from "@/utils/logger.js";
+import { notificationInputProps } from "@/utils/types/graphqltypes/notification.type.js";
+import { Notification } from "@/utils/types/notification.types.js";
+import { Seen_notification } from "@/utils/types/notification.types.js";
+import { Prisma } from "@prisma/client";
 
 export const seenNotificationMutation = asyncGraphqlAPIHandeler(
-  async (_, { input: { notification_ids = [] } }, ctx) => {
+  async (
+    _,
+    { input: { notification_ids = [] } }: notificationInputProps,
+    ctx,
+  ) => {
     const payload = ctx.user;
 
     logger.debug(notification_ids, "notifciation idssss", payload);
@@ -31,7 +40,7 @@ export const seenNotificationMutation = asyncGraphqlAPIHandeler(
       //   },
       // });
 
-      const notifications = await tx.$queryRaw`
+      const notifications = await tx.$queryRaw<Notification[]>`
           
 
           select * from notification WHERE notification_id = ANY(${notification_ids}::int[]) and reciever_id = ${payload.userId} 
@@ -60,7 +69,7 @@ export const seenNotificationMutation = asyncGraphqlAPIHandeler(
       //   },
       // });
 
-      const alreadySeen = await tx.$queryRaw`
+      const alreadySeen = await tx.$queryRaw<Seen_notification[]>`
           
           select * from notification_seen where notification_id = ANY(${validIds}::int[])
 

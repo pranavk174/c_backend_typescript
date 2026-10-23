@@ -1,3 +1,5 @@
+import { Seen } from "./base.type.js";
+
 export interface notificationInputProps {
   notification_ids: number[];
 }
@@ -5,7 +7,7 @@ export interface notificationInputProps {
 export interface seenNotificationSocketResponse {
   updated: number;
   ignored: number;
-  alreadySeen?: undefined;
+  alreadySeen?: number | undefined;
 }
 
 export interface Notification {
@@ -13,9 +15,13 @@ export interface Notification {
   reference_id: number | null;
   notification_type: "new_message" | "story_like" | "post_like" | "follow";
   name: string;
-  message: string;
-  metadata: Record<string, unknown> | null;
+  message: string | unknown;
+  metadata?: Record<string, unknown> | null;
   profile_pic: string;
-  created_at: Date;
+  created_at?: Date;
   color?: string;
+}
+
+export interface Seen_notification extends Seen {
+  notification_id: number;
 }

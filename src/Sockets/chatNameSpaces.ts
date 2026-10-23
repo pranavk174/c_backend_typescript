@@ -132,4 +132,6 @@ export const chatSockets = (socket: socketInterface) => {
     // socket.emit(ONLINE_USERS, Array.from(onlineUsers));
     sendUsers(io, payload);
   });
+
+  return socket.user;
 };

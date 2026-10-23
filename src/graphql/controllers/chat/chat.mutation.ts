@@ -1,17 +1,24 @@
 /* eslint-disable no-undef */
-import prisma from "../../../../prisma/prisma-client.js";
-import { Prisma } from "@prisma/client";
-import { logger } from "../../../utils/logger.js";
-import { asyncGraphqlAPIHandeler } from "../../../lib/util.js";
-import { BadRequestError } from "../../../lib/errorHandler.js";
+import { BadRequestError, NotFoundError } from "@/lib/errorHandler.js";
 import {
   checkChatExists,
-  checkMessageExists,
   createChat,
-} from "../../../lib/helpers.js";
+  chekUserExists,
+  checkMessageExists,
+} from "@/lib/helpers.js";
+import { asyncGraphqlAPIHandeler } from "@/lib/util.js";
+import { logger } from "@/utils/logger.js";
+import { messageProps, MessageReaction, mediaProps } from "@/utils/types.js";
+import {
+  chatArgumentProps,
+  ctxProps,
+  chatInputProps,
+} from "@/utils/types/graphqltypes/chat.type.js";
+import { Prisma } from "@prisma/client";
+import prisma from "../../../prisma/prisma-client.js";
 
 export const createNewChatMutation = asyncGraphqlAPIHandeler(
-  async (_, { member_id }, ctx) => {
+  async (_: unknown, { member_id }: chatArgumentProps, ctx: ctxProps) => {
     if (!member_id) {
       throw new BadRequestError("Member id is Missing");
       // return {
@@ -29,7 +36,7 @@ export const createNewChatMutation = asyncGraphqlAPIHandeler(
     if (exists.length === 0) {
       chat_id = await createChat({
         payload,
-        reciever_id: member_id,
+        reciever_id: [member_id],
 
         prisma,
       });
@@ -49,7 +56,11 @@ export const createNewChatMutation = asyncGraphqlAPIHandeler(
   },
 );
 export const createNewGroupMutation = asyncGraphqlAPIHandeler(
-  async (_, { input: { member_ids, groupName, profile_pic = null } }, ctx) => {
+  async (
+    _,
+    { input: { member_ids, groupName, profile_pic = null } }: chatInputProps,
+    ctx,
+  ) => {
     const payload = ctx.user;
 
     // if (member_ids.length <= 1) {
@@ -63,7 +74,7 @@ export const createNewGroupMutation = asyncGraphqlAPIHandeler(
     await prisma.$transaction(async (tx) => {
       const created = await createChat({
         payload,
-        reciever_ids: member_ids,
+        reciever_id: member_ids,
         chat_type: "group",
         prisma: tx,
       });
@@ -73,10 +84,10 @@ export const createNewGroupMutation = asyncGraphqlAPIHandeler(
       `;
 
       await tx.$queryRaw`
-      insert into chat_member (chat_id , member_id , role) values ${Prisma.join(members)}
+      insert into chat_member (chat_id , member_id , role) values ${Prisma.join(member_ids)}
       `;
 
-      return created[0];
+      return created;
     });
 
     return {
@@ -90,7 +101,9 @@ export const createNewGroupMutation = asyncGraphqlAPIHandeler(
 export const sendMessageMutation = asyncGraphqlAPIHandeler(
   async (
     _,
-    { input: { chat_ids, reciever_ids, content = null, media = [] } },
+    {
+      input: { chat_ids, reciever_ids, content = null, media = [] },
+    }: chatInputProps,
     ctx,
   ) => {
     const payload = ctx.user;
@@ -115,7 +128,7 @@ export const sendMessageMutation = asyncGraphqlAPIHandeler(
     }
 
     if (!chat_id) {
-      const reciever_id = parseInt(reciever_ids[0]);
+      const reciever_id = reciever_ids[0];
       const reciever = await chekUserExists(prisma, reciever_ids);
 
       // logger.debug(typeof reciever_id, "type dataaa...");
@@ -131,12 +144,17 @@ export const sendMessageMutation = asyncGraphqlAPIHandeler(
       );
 
       if (chatExists.length < 1) {
-        chatId = await createChat(payload, reciever_id, undefined, prisma);
+        chatId = await createChat({
+          payload,
+          reciever_id: [reciever_id],
+          chat_type: "private",
+          prisma,
+        });
       } else {
         chatId = chatExists[0].chat_id;
       }
     }
-    const addMessage = await prisma.$queryRaw`
+    const addMessage: messageProps[] = await prisma.$queryRaw`
           
           insert into message (content,sender_id ,created_at ,chat_id )  values(${content},${payload.userId},${new Date()},${chat_id ?? chatId}) returning *
           
@@ -170,7 +188,7 @@ export const sendMessageMutation = asyncGraphqlAPIHandeler(
   },
 );
 export const editMessageMutation = asyncGraphqlAPIHandeler(
-  async (_, { input: { message_ids, content } }, ctx) => {
+  async (_, { input: { message_ids, content } }: chatInputProps, ctx) => {
     const payload = ctx.user;
 
     // logger.debug(message_ids, "ctx dataaaaaaaa");
@@ -180,7 +198,7 @@ export const editMessageMutation = asyncGraphqlAPIHandeler(
 
     const message_id = message_ids[0];
 
-    const messageData = await prisma.$queryRaw`
+    const messageData: messageProps[] = await prisma.$queryRaw`
         
         select id,content,sender_id from message where id = ${message_id} and is_deleted = false limit 1
         
@@ -223,7 +241,7 @@ WHERE id = ${message_id}
   },
 );
 export const deleteMessageMutation = asyncGraphqlAPIHandeler(
-  async (_, { input: { message_ids, delete_type } }, ctx) => {
+  async (_, { input: { message_ids, delete_type } }: chatInputProps, ctx) => {
     const payload = ctx.user;
 
     if (message_ids.length === 0 || !delete_type) {
@@ -234,7 +252,10 @@ export const deleteMessageMutation = asyncGraphqlAPIHandeler(
       };
     }
 
-    const messageData = await checkMessageExists(prisma, message_ids);
+    const messageData: messageProps[] = await checkMessageExists(
+      prisma,
+      message_ids,
+    );
     // const memeberdata = await checkMemeberExists(
     //   prisma,
     //   messageData[0].chat_id,
@@ -289,7 +310,11 @@ export const deleteMessageMutation = asyncGraphqlAPIHandeler(
   },
 );
 export const replyMessageMutation = asyncGraphqlAPIHandeler(
-  async (_, { input: { message_ids, content, media } }, ctx) => {
+  async (
+    _,
+    { input: { message_ids, content, media } }: chatInputProps,
+    ctx,
+  ) => {
     const payload = ctx.user;
 
     if (message_ids.length !== 1 || (!content && !media)) {
@@ -311,10 +336,10 @@ export const replyMessageMutation = asyncGraphqlAPIHandeler(
   },
 );
 export const reactMessageMutation = asyncGraphqlAPIHandeler(
-  async (_, { input: { message_ids, reaction_id } }, ctx) => {
+  async (_, { input: { message_ids, reaction_id } }: chatInputProps, ctx) => {
     const payload = ctx.user;
 
-    if (!message_ids.length > 0 || !reaction_id) {
+    if (message_ids.length < 1 || !reaction_id) {
       throw new BadRequestError("Data is Missing");
     }
 
@@ -322,7 +347,7 @@ export const reactMessageMutation = asyncGraphqlAPIHandeler(
 
     const [messaseData, reactionData] = await Promise.all([
       checkMessageExists(prisma, message_ids),
-      prisma.$queryRaw`
+      prisma.$queryRaw<MessageReaction[]>`
           
           select react_id from reaction where react_id = ${reaction_id}
 
@@ -370,7 +395,9 @@ SET
 export const forwardMessageMutation = asyncGraphqlAPIHandeler(
   async (
     _,
-    { input: { message_ids, chat_ids = [], reciever_ids = [] } },
+    {
+      input: { message_ids, chat_ids = [], reciever_ids = [] },
+    }: chatInputProps,
     ctx,
   ) => {
     const payload = ctx.user;
@@ -435,12 +462,12 @@ export const forwardMessageMutation = asyncGraphqlAPIHandeler(
 
         const newChatId = await createChat({
           payload,
-          recievr_id: recieverId,
+          reciever_id: [recieverId],
           chat_type: "private",
           prisma,
         });
 
-        finalChatIds.push(newChatId);
+        finalChatIds.push(newChatId[0].id);
       }
     }
 
@@ -457,7 +484,7 @@ export const forwardMessageMutation = asyncGraphqlAPIHandeler(
     for (const message of messages) {
       // original message
 
-      const originalMessage = await prisma.$queryRaw`
+      const originalMessage = await prisma.$queryRaw<messageProps[]>`
 
         SELECT
           content,
@@ -477,7 +504,7 @@ export const forwardMessageMutation = asyncGraphqlAPIHandeler(
         // create forwarded message
         // =========================
 
-        const forwardedMessage = await prisma.$queryRaw`
+        const forwardedMessage = await prisma.$queryRaw<messageProps[]>`
 
           INSERT INTO message (
             content,
@@ -503,7 +530,7 @@ export const forwardMessageMutation = asyncGraphqlAPIHandeler(
         // copy attachments
         // =========================
 
-        const attachments = await prisma.$queryRaw`
+        const attachments = await prisma.$queryRaw<mediaProps[]>`
 
           SELECT
             url,
@@ -553,7 +580,7 @@ export const forwardMessageMutation = asyncGraphqlAPIHandeler(
   },
 );
 export const seenMessageMutation = asyncGraphqlAPIHandeler(
-  async (_, { input: { message_ids } }, ctx) => {
+  async (_, { input: { message_ids } }: chatInputProps, ctx) => {
     const payload = ctx.user;
 
     if (message_ids.length < 1) {
@@ -564,7 +591,7 @@ export const seenMessageMutation = asyncGraphqlAPIHandeler(
 
     await prisma.seen_message.createMany({
       data: message_ids.map((m) => ({
-        message_id: parseInt(m),
+        message_id: m,
         user_id: payload.userId,
       })),
     });
@@ -578,7 +605,7 @@ export const seenMessageMutation = asyncGraphqlAPIHandeler(
 );
 
 export const setWallpaperMutation = asyncGraphqlAPIHandeler(
-  async (_, { url }, ctx) => {
+  async (_, { url }: chatArgumentProps, ctx) => {
     if (!url || url.length === 0) {
       throw new BadRequestError("Data is Missing");
     }

@@ -1,109 +1,122 @@
-/* eslint-disable no-undef */
-import prisma from "../../../../prisma/prisma-client.js";
-
-import bcrypt from "bcrypt";
-
-import { AppError, ForbiddenError } from "../../../lib/errorHandler.js";
-import jwt from "jsonwebtoken";
-import { sendMail } from "../../../utils/nodemainler.js";
-import { generateTokens } from "../../../lib/tokenvalidator.js";
-
-import { logger } from "../../../utils/logger.js";
+import { AppError, ForbiddenError } from "@/lib/errorHandler.js";
+import { chekOTP } from "@/lib/helpers.js";
+import { inputValidate } from "@/lib/schemavalidator.js";
+import { generateTokens } from "@/lib/tokenvalidator.js";
 import {
-  ApiLimiter,
   asyncGraphqlAPIHandeler,
+  ApiLimiter,
   otpGenrator,
-} from "../../../lib/util.js";
-import { chekOTP } from "../../../lib/helpers.js";
-import { inputValidate } from "../../../lib/schemavalidator.js";
-export const sendOtpMutation = asyncGraphqlAPIHandeler(async (_, { email }) => {
-  if (!email) {
-    throw new AppError({
-      message: "Email is Missing",
-      status: 400,
-      code: "DATA_MISSING_ERROR",
-    });
-  }
-
-  inputValidate(email, "email");
-  const limit = await ApiLimiter.consume(email);
-
-  // logger.debug(limit, "limit dataaaaa");
-  const exists = await prisma.users.findFirst({
-    where: { email },
-  });
-
-  const { hashedOtp, otp, expires_at } = await otpGenrator();
-  logger.debug(otp, "OTP");
-
-  if (exists) {
-    if (
-      exists.account_status === "deleted" ||
-      exists.account_status === "suspended"
-    ) {
+} from "@/lib/util.js";
+import prisma from "@/prisma/prisma-client.js";
+import { User } from "@/utils/dummy.js";
+import { logger } from "@/utils/logger.js";
+import { sendMail } from "@/utils/nodemainler.js";
+import {
+  userArgumentProps,
+  userInputProps,
+  UserInput,
+  UpdateUserInput,
+  Theme,
+  PersonalizationInput,
+  AccountStatus,
+  BlockUserInput,
+} from "@/utils/types/graphqltypes/user.type.js";
+import { CookieOptions } from "express";
+import { jwt } from "zod";
+import bcrypt from "bcrypt";
+/* eslint-disable no-undef */
+export const sendOtpMutation = asyncGraphqlAPIHandeler(
+  async (_, { email }: userArgumentProps) => {
+    if (!email) {
       throw new AppError({
-        message: `Account is ${exists.account_status}, contact support`,
-        status: 403,
-        code: "ACCOUNT_BLOCK_ERROR",
+        message: "Email is Missing",
+        status: 400,
+        code: "DATA_MISSING_ERROR",
       });
     }
 
-    // await sendMail(email, otp);
+    inputValidate(email, "email");
+    const limit = await ApiLimiter.consume(email);
 
-    await prisma.otp.upsert({
+    // logger.debug(limit, "limit dataaaaa");
+    const exists = await prisma.users.findFirst({
       where: { email },
-      update: {
-        otp: await bcrypt.hash(String(otp), 10),
-        expires_at,
-      },
-      create: {
-        email,
-        otp: await bcrypt.hash(String(otp), 10),
-        expires_at,
-      },
     });
+
+    const { hashedOtp, otp, expires_at } = await otpGenrator();
+    logger.debug(otp, "OTP");
+
+    if (exists) {
+      if (
+        exists.account_status === "deleted" ||
+        exists.account_status === "suspended"
+      ) {
+        throw new AppError({
+          message: `Account is ${exists.account_status}, contact support`,
+          status: 403,
+          code: "ACCOUNT_BLOCK_ERROR",
+        });
+      }
+
+      // await sendMail(email, otp);
+
+      await prisma.otp.upsert({
+        where: { email },
+        update: {
+          otp: await bcrypt.hash(String(otp), 10),
+          expires_at,
+        },
+        create: {
+          email,
+          otp: await bcrypt.hash(String(otp), 10),
+          expires_at,
+        },
+      });
+
+      return {
+        message: `Otp Send Successfully ${otp} `,
+        status: 200,
+        success: true,
+      };
+    }
+
+    const found = await prisma.register.findFirst({
+      where: { email },
+    });
+
+    if (found) {
+      await prisma.register.update({
+        where: { email },
+        data: {
+          otp: hashedOtp,
+          expires_at,
+          is_verified: false,
+        },
+      });
+    } else {
+      await prisma.register.create({
+        data: {
+          email,
+          otp: hashedOtp,
+          expires_at,
+        },
+      });
+    }
 
     return {
-      message: `Otp Send Successfully ${otp} `,
-      status: 200,
+      message: `Otp Send Successfully ${otp}`,
+      status: 201,
       success: true,
     };
-  }
-
-  const found = await prisma.register.findFirst({
-    where: { email },
-  });
-
-  if (found) {
-    await prisma.register.update({
-      where: { email },
-      data: {
-        otp: hashedOtp,
-        expires_at,
-        is_verified: false,
-      },
-    });
-  } else {
-    await prisma.register.create({
-      data: {
-        email,
-        otp: hashedOtp,
-        expires_at,
-      },
-    });
-  }
-
-  return {
-    message: `Otp Send Successfully ${otp}`,
-    status: 201,
-    success: true,
-  };
-});
+  },
+);
 
 export const verifyOtpMutation = asyncGraphqlAPIHandeler(
   async (
     _,
-    { input: { email, otp, device_id, ip_address, location, device_name } },
+    {
+      input: { email, otp, device_id, ip_address, location, device_name },
+    }: userInputProps,
     context,
   ) => {
     if (
@@ -198,9 +211,10 @@ export const verifyOtpMutation = asyncGraphqlAPIHandeler(
     session_id = EXCLUDED.session_id
   RETURNING *;
 `;
-      const cookieOptions = {
+
+      const cookieOptions: CookieOptions = {
         httpOnly: true,
-        secure: true,
+        secure: process.env.NODE_ENV === "production",
         sameSite: "none",
         path: "/",
       };
@@ -274,7 +288,7 @@ export const createUserMutation = asyncGraphqlAPIHandeler(
         profile_pic = "",
         cover_pic = null,
       },
-    },
+    }: UserInput,
   ) => {
     if (!fname || !lname || !email || !mobile || !user_name) {
       throw new AppError({
@@ -362,12 +376,26 @@ export const createUserMutation = asyncGraphqlAPIHandeler(
   },
 );
 export const updateUserMutation = asyncGraphqlAPIHandeler(
-  async (_, { input }, context) => {
-    const updateData = {};
+  async (_, { input }: { input: UpdateUserInput }, context) => {
+    const updateData: Partial<UpdateUserInput> = {};
 
-    for (const key in input) {
-      if (input[key] !== undefined) {
-        updateData[key] = input[key];
+    for (const key of Object.keys(input) as (keyof UpdateUserInput)[]) {
+      const value = input[key];
+      if (value === undefined) continue;
+
+      switch (key) {
+        case "name":
+        case "bio":
+        case "cover_pic":
+        case "profile_pic":
+          updateData[key] = value;
+          break;
+
+        case "theme":
+          if (value === Theme.DARK || value === Theme.LIGHT || value === null) {
+            updateData.theme = value;
+          }
+          break;
       }
     }
 
@@ -396,17 +424,25 @@ export const updateUserMutation = asyncGraphqlAPIHandeler(
 );
 
 export const updatePreferenceMutation = asyncGraphqlAPIHandeler(
-  async (_, { input: { theme } }, ctx) => {
+  async (
+    _,
+    {
+      input: { theme },
+    }: {
+      input: PersonalizationInput;
+    },
+    ctx,
+  ) => {
     const payload = ctx.user;
 
-    const updated = await prisma.$queryRaw`
+    const updated = await prisma.$queryRaw<User[]>`
   
   update  users set theme = ${theme} where id = ${payload.userId} returning *
   
   
   `;
 
-    await ctx.res.cookie("theme", updated[0].theme, {
+    ctx.res.cookie("theme", updated[0].theme, {
       httpOnly: false,
       secure: true,
       sameSite: "none",
@@ -422,7 +458,15 @@ export const updatePreferenceMutation = asyncGraphqlAPIHandeler(
 );
 
 export const deleteAccountMutation = asyncGraphqlAPIHandeler(
-  async (_, { action_type }, context) => {
+  async (
+    _,
+    {
+      action_type,
+    }: {
+      action_type: AccountStatus;
+    },
+    context,
+  ) => {
     const payload = context.user;
     const enums = ["deleted", "suspended"];
     if (!enums.includes(action_type.toLowerCase())) {
@@ -505,7 +549,12 @@ export const generateRefreshTokenMutation = asyncGraphqlAPIHandeler(
 
     const refreshToken = cookie;
 
-    const payload = jwt.verify(refreshToken, process.env.REFRESH_SECRET);
+    const refreshSecret = process.env.REFRESH_SECRET ?? "";
+    const payload = jwt.verify(refreshToken, refreshSecret);
+
+    if (typeof payload === "string" || !("userId" in payload)) {
+      throw new Error("Invalid token payload");
+    }
 
     const device = await prisma.devices.findFirst({
       where: {
@@ -579,7 +628,15 @@ export const logoutMutation = asyncGraphqlAPIHandeler(
 );
 
 export const blockUserMutation = asyncGraphqlAPIHandeler(
-  async (_, { input: { blocked_user_id, reason } }, context) => {
+  async (
+    _,
+    {
+      input: { blocked_user_id, reason },
+    }: {
+      input: BlockUserInput;
+    },
+    context,
+  ) => {
     const payload = context.user;
 
     if (!reason || reason.trim() === "" || !blocked_user_id) {
@@ -639,7 +696,15 @@ export const blockUserMutation = asyncGraphqlAPIHandeler(
 );
 
 export const unBlockUserMutation = asyncGraphqlAPIHandeler(
-  async (_, { input: { blocked_user_id } }, context) => {
+  async (
+    _,
+    {
+      input: { blocked_user_id },
+    }: {
+      input: BlockUserInput;
+    },
+    context,
+  ) => {
     const payload = context.user;
 
     if (!blocked_user_id) {

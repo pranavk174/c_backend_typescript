@@ -1,11 +1,24 @@
+import { asyncGraphqlAPIHandeler } from "@/lib/util.js";
+import prisma from "@/prisma/prisma-client.js";
+import { onlineUsers } from "@/utils/socket.helper.js";
+import {
+  messageProps,
+  AllchatProps,
+  allgroupChatProps,
+} from "@/utils/types.js";
+import {
+  chatInputProps,
+  wallpaperProps,
+} from "@/utils/types/graphqltypes/chat.type.js";
 import { BadRequestError } from "../../../lib/errorHandler.js";
 import { Prisma } from "@prisma/client";
-import prisma from "../../../../prisma/prisma-client.js";
-import { asyncGraphqlAPIHandeler } from "../../../lib/util.js";
 
-import { onlineUsers } from "../../../utils/socket.helper.js";
 export const getChatByIdQuery = asyncGraphqlAPIHandeler(
-  async (_, { input: { chat_ids, cursor = null, limit = 20 } }, ctx) => {
+  async (
+    _,
+    { input: { chat_ids, cursor = null, limit = 20 } }: chatInputProps,
+    ctx,
+  ) => {
     const payload = ctx.user;
 
     const parsedCursor = cursor ? Number(cursor) : null;
@@ -19,7 +32,7 @@ export const getChatByIdQuery = asyncGraphqlAPIHandeler(
 
     const chat_id = chat_ids[0];
 
-    const chats = await prisma.$queryRaw`
+    const chats = await prisma.$queryRaw<messageProps[]>`
 
 SELECT 
     m.id,
@@ -201,7 +214,7 @@ export const getAllChatsQuery = asyncGraphqlAPIHandeler(async (_, __, ctx) => {
   const payload = ctx.user;
 
   const [chats, groups] = await Promise.all([
-    prisma.$queryRaw`
+    prisma.$queryRaw<AllchatProps[]>`
 
 SELECT DISTINCT ON (c.id)
 
@@ -382,7 +395,7 @@ and c.chat_type <> 'group'
 ORDER BY c.id, m.created_at DESC NULLS LAST;
 
 `,
-    prisma.$queryRaw`
+    prisma.$queryRaw<allgroupChatProps[]>`
 SELECT
     g.name,
     g.chat_id,
@@ -453,7 +466,7 @@ ORDER BY m.created_at DESC NULLS LAST;
 `,
   ]);
   // logger.debug("group", groups);
-  const newChats = chats.reduce((arr, idx) => {
+  const newChats = chats.reduce((arr: AllchatProps[], idx) => {
     const online = onlineUsers.has(idx.user_id.toString());
     // logger.debug(
     //   online,
@@ -475,7 +488,9 @@ ORDER BY m.created_at DESC NULLS LAST;
     data: {
       _responseType: "AllChats",
       items: [...newChats, ...groups].sort(
-        (a, b) => new Date(b.last_message_at) - new Date(a.last_message_at),
+        (a, b) =>
+          new Date(b.last_message_at).getTime() -
+          new Date(a.last_message_at).getTime(),
       ),
       // items: chats,
     },
@@ -483,7 +498,7 @@ ORDER BY m.created_at DESC NULLS LAST;
 });
 
 export const getAllMembersQuery = asyncGraphqlAPIHandeler(
-  async (_, { input: { chat_ids } }, ctx) => {
+  async (_, { input: { chat_ids } }: chatInputProps, ctx) => {
     // logger.debug(chat_ids, "chat idssss");
     if (chat_ids.length === 0) {
       throw new BadRequestError("Chat id is missing");
@@ -535,7 +550,7 @@ export const getEmojisQuery = asyncGraphqlAPIHandeler(async () => {
 export const getWallPaperQuery = asyncGraphqlAPIHandeler(async (_, __, ctx) => {
   const payload = ctx.user;
 
-  const wallpaper = await prisma.$queryRaw`
+  const wallpaper = await prisma.$queryRaw<wallpaperProps[]>`
         
         select url from wallpapers where user_id = ${payload.userId} 
         

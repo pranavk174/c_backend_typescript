@@ -1,5 +1,5 @@
-import { defaultFieldResolver, GraphQLError } from "graphql";
-import prisma from "../../../prisma/prisma-client.js";
+import { defaultFieldResolver, GraphQLError, GraphQLSchema } from "graphql";
+import prisma from "../../prisma/prisma-client.js";
 import { mapSchema, getDirective, MapperKind } from "@graphql-tools/utils";
 
 import {
@@ -11,7 +11,8 @@ import { checkMemeberExists } from "../../lib/helpers.js";
 import { Prisma } from "@prisma/client";
 import { logger } from "../../utils/logger.js";
 import { asyncGraphqlAPIHandeler } from "../../lib/util.js";
-export function authDirectiveTransformer(schema) {
+import { chat_memberProps, userProps } from "../../utils/types.js";
+export function authDirectiveTransformer(schema: GraphQLSchema) {
   return mapSchema(schema, {
     [MapperKind.OBJECT_FIELD]: (fieldConfig) => {
       const authDirective = getDirective(schema, fieldConfig, "auth")?.[0];
@@ -22,8 +23,13 @@ export function authDirectiveTransformer(schema) {
         fieldConfig.resolve = asyncGraphqlAPIHandeler(
           async function (source, args, context, info) {
             // logger.debug("AUTH DIRECTIVE RUNNING");
-            const cookie = await context.request.cookieStore.get("accessToken");
+            const cookie =
+              await context.request.cookieStore?.get("accessToken");
             // TOKEN VALIDATION
+
+            if (!cookie) {
+              throw new Error("Cookie is Missing");
+            }
             const payload = await validateCookie(cookie);
 
             // USER CONTEXT
@@ -40,7 +46,7 @@ export function authDirectiveTransformer(schema) {
   });
 }
 
-export const isChatMemberDirective = (schema) => {
+export const isChatMemberDirective = (schema: GraphQLSchema) => {
   return mapSchema(schema, {
     [MapperKind.OBJECT_FIELD]: (fieldConfig) => {
       const directive = getDirective(schema, fieldConfig, "isChatMember")?.[0];
@@ -62,7 +68,7 @@ export const isChatMemberDirective = (schema) => {
             Array.isArray(args.input.chat_ids) &&
             args.input.chat_ids.length > 0
           ) {
-            const data = await prisma.$queryRaw`
+            const data = await prisma.$queryRaw<chat_memberProps[]>`
 
     SELECT member_id
     FROM chat_member
@@ -101,7 +107,7 @@ export const isChatMemberDirective = (schema) => {
   });
 };
 
-export function inputValidatorDirective(schema) {
+export function inputValidatorDirective(schema: GraphQLSchema) {
   return mapSchema(schema, {
     [MapperKind.OBJECT_FIELD]: (fieldConfig) => {
       const authDirective = getDirective(
@@ -124,7 +130,7 @@ export function inputValidatorDirective(schema) {
             // ORIGINAL RESOLVER
             return await originalResolver(source, args, context, info);
           } catch (error) {
-            logger.debug(error.message, "invalid data in inputValdiate");
+            // logger.debug(error.message, "invalid data in inputValdiate");
             // throw new GraphQLError(error.message || "Unauthorized");
             // return errorHandler(error.message, error.name, 401, error);
             throw error;
