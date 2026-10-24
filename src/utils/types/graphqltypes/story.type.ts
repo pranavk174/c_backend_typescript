@@ -138,3 +138,5 @@ export interface GroupedStories {
 export interface GroupedUserStoriess {
   [user_id: number]: UserStoriess;
 }
+
+export type StoryResponseType = "StoriesData" | "StoryData";

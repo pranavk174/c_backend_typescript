@@ -1,6 +1,6 @@
+import { logger } from "@/utils/logger.js";
+import { AppErrorOptions } from "@/utils/types/base.type.js";
 import { GraphQLError } from "graphql";
-import { logger } from "../utils/logger.js";
-import { AppErrorOptions } from "../utils/types.js";
 
 export class AppError extends GraphQLError {
   constructor({

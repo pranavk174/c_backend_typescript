@@ -3,14 +3,30 @@ export const notificationSocketIds = new Map();
 export const storySocketIds = new Map();
 export const onlineUsers = new Set();
 import prisma from "../prisma/prisma-client.js";
-import { Prisma } from "@prisma/client";
+import {
+  notification,
+  notification_seen,
+  Prisma,
+  seen_message,
+} from "@prisma/client";
 import { ONLINE_USERS, SEEN_NOTIFICATION } from "./events.js";
 
 import { logger } from "./logger.js";
 import { chatNamespace } from "../index.js";
-import { userProps } from "./types.js";
+import {
+  chat_memberProps,
+  chatProps,
+  SendMessageData,
+  socketResponse,
+  userProps,
+} from "./types.js";
+import { socketCallback, socketInterface } from "./types/base.type.js";
+import { chatArgumentProps } from "./types/graphqltypes/chat.type.js";
+import { Notification } from "./types/notification.types.js";
+import { User } from "./types/graphqltypes/user.type.js";
+import { Server, Socket } from "socket.io";
 
-export const checkBlocked = async (user_id, otherUserId) => {
+export const checkBlocked = async (user_id: number, otherUserId: number) => {
   try {
     const blocked = await prisma.block.findFirst({
       where: {
@@ -35,16 +51,21 @@ export const checkBlocked = async (user_id, otherUserId) => {
       return false;
     }
   } catch (error) {
-    throw new Error(error.message);
+    if (error instanceof Error) throw new Error(error.message);
   }
 };
 
-export const joinChat = async (socket, payload, data, callback) => {
-  const { user_id, chat_id, chatMember } = data;
+export const joinChat = async (
+  socket: socketInterface,
+  payload: userProps,
+  data: chatArgumentProps,
+  callback: (data: socketCallback<socketResponse>) => void,
+) => {
+  const { user_id, chat_id } = data;
   logger.debug("chat joined user .....", data);
   onlineUsers.add(user_id.toString());
 
-  const chatMembers = await prisma.$queryRaw`
+  const chatMembers = await prisma.$queryRaw<chat_memberProps[]>`
   
   select member_id from chat_member where chat_id = ${chat_id}
   
@@ -85,7 +106,7 @@ export const joinChat = async (socket, payload, data, callback) => {
     });
   }
 
-  const notifications = await prisma.$queryRaw`
+  const notifications = await prisma.$queryRaw<Notification[]>`
   
 
 SELECT n.*
@@ -104,21 +125,13 @@ AND ns.notification_id IS NULL;
       (no) => Prisma.sql`(${no.notification_id}, ${payload.userId})`,
     );
 
-    const insertSeen = await prisma.$queryRaw`
+    const insertSeen = await prisma.$queryRaw<notification_seen[]>`
   INSERT INTO notification_seen (notification_id, user_id)
   VALUES ${Prisma.join(values)}
   ON CONFLICT(notification_id, user_id)
   DO NOTHING  returning notification_id
 `;
 
-    // const seen = insertSeen.reduce((acc, idx) => {
-    //   const data = idx.notification_id;
-
-    //   logger.debug(data, "data in redice");
-    //   // acc.push(data);
-    // }, []);
-
-    // logger.debug(insertSeen, "insert seen npotficationssssss...");
     socket.emit(
       SEEN_NOTIFICATION,
       insertSeen.map((seen) => seen.notification_id),
@@ -131,18 +144,24 @@ AND ns.notification_id IS NULL;
 
   return callback({
     message: "user joined",
-    data: users,
+    // data: {
+    //   users: users,
+    // },
     success: true,
   });
 };
 
-export const leaveChat = async (socket, data, callback) => {
-  const { chat_id, user_id, chatType } = data;
+export const leaveChat = async (
+  socket: socketInterface,
+  data: chatArgumentProps,
+  callback: (data: socketCallback<socketResponse>) => void,
+) => {
+  const { chat_id, user_id } = data;
   // logger.debug("chat ;eaft. user .....", data);
 
   const reciever = chatSocketIds.get(String(user_id));
 
-  const isInRoom = isReceiverInRoom(chatNamespace, user_id, chat_id);
+  const isInRoom = isReceiverInRoom(socket, user_id, chat_id);
 
   if (isInRoom) {
     const targetSocket = chatNamespace.sockets.get(reciever);
@@ -158,17 +177,19 @@ export const leaveChat = async (socket, data, callback) => {
   // logger.debug("user left", socket.rooms);
   return callback({
     message: "user left",
-    data: users,
+    data: {
+      users,
+    },
     success: true,
   });
 };
 
-export const getSockets = (member) => {
+export const getSockets = (member: number) => {
   const receiverSocketId = chatSocketIds.get(String(member));
   return receiverSocketId;
 };
 
-export const getNotificationSockets = (member) => {
+export const getNotificationSockets = (member: number) => {
   const receiverSocketId = notificationSocketIds.get(String(member));
   return receiverSocketId;
 };
@@ -180,36 +201,44 @@ export const getNotificationSockets = (member) => {
  * @param {string|number} chatId - Chat room ka ID
  * @returns {boolean}
  */
-export const isReceiverInRoom = (io, receiverId, chatId) => {
+export const isReceiverInRoom = (
+  io: Socket,
+  receiverId: number,
+  chatId: number,
+) => {
   const receiverSocketId = chatSocketIds.get(String(receiverId));
   if (!receiverSocketId) return false; // receiver online hi nahi hai
-  logger.debug(io.adapter.rooms, "ada[pyerss");
-  const room = io.adapter.rooms.get(`chat:${chatId}`);
+
+  const room = io.nsp.adapter.rooms.get(`chat:${chatId}`);
   logger.debug(room, "room dataaaaa");
   if (!room) return false; // room exist hi nahi karti
 
   return room.has(receiverSocketId);
 };
 
-export const areReceiversInRoom = (io, receiverIds, chatId) => {
+export const areReceiversInRoom = (
+  io: Socket,
+  receiverIds: number[],
+  chatId: number,
+) => {
   const receiverSocketIds = receiverIds.filter((recieverId) =>
     chatSocketIds.get(String(recieverId)),
   );
-  if (!receiverSocketIds.length === 0) return false; // receiver online hi nahi hai
-  logger.debug(io.adapter.rooms, "ada[pyerss");
-  const room = io.adapter.rooms.get(`chat:${chatId}`);
+  if (receiverSocketIds.length < 1) return false; // receiver online hi nahi hai
+  logger.debug(io.nsp.adapter.rooms, "ada[pyerss");
+  const room = io.nsp.adapter.rooms.get(`chat:${chatId}`);
   logger.debug(room, "room dataaaaa");
   if (!room) return false; // room exist hi nahi karti
 
-  return room.has(receiverSocketIds);
+  return room.has(receiverSocketIds[0].toString());
 };
 
-export const getSocketmembers = (id) => {
+export const getSocketmembers = (id: number) => {
   const data = Array.from(chatSocketIds).map((d) => d[1]);
   return data;
 };
 
-export const sendUsers = async (socket, payload) => {
+export const sendUsers = async (socket: Socket, payload: userProps) => {
   // logger.debug("users online", onlineUsers, chatSocketIds);
 
   const users = Array.from(onlineUsers);
@@ -253,7 +282,7 @@ export const createNotification = async (
   reference_id: number | null = null,
 ) => {
   try {
-    const res = await prisma.$queryRaw`
+    const res = await prisma.$queryRaw<Notification[]>`
       
    
 
@@ -275,7 +304,7 @@ export const createNotification = async (
       notification_id: res[0].notification_id,
       notification_type: res[0].notification_type,
       name: payload.name,
-      message: res[0].metadata.message,
+      message: res[0].metadata?.message,
       time: res[0].created_at,
       reference_id: res[0].reference_id,
       profile_pic: payload.profile_pic,
@@ -284,6 +313,6 @@ export const createNotification = async (
 
     return { notification, res };
   } catch (err) {
-    throw new Error(err.message);
+    if (err instanceof Error) throw new Error(err.message);
   }
 };

@@ -7,7 +7,6 @@ import {
   asyncMethodsType,
   callbackError,
   SendMessageData,
-  SendMessageDatas,
   socketCallback,
   socketInterface,
   SocketMethod,
@@ -17,6 +16,11 @@ import { AppError } from "./errorHandler.js";
 import bcrypt from "bcrypt";
 import { RateLimiterMemory } from "rate-limiter-flexible";
 import { ctxProps } from "../utils/types/graphqltypes/chat.type.js";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
+import jwt from "jsonwebtoken";
+
+const { TokenExpiredError } = jwt;
+import { ZodError } from "zod";
 
 export const isDev = process.env.NODE_ENV !== "production";
 export const asyncGraphqlAPIHandeler =
@@ -31,14 +35,13 @@ export const asyncGraphqlAPIHandeler =
       const response = await resolver(parent, input, context, info);
       // logger.info(response, "response in dataa")
       return response;
-    } catch (error: Error) {
-      logger.debug(error, "error classs nhi");
-      logger.debug(error.cause, "errro .code");
-
+    } catch (error) {
       if (error instanceof AppError) {
         throw error;
       }
-      if (error.name === "PrismaClientKnownRequestError") {
+      if (error instanceof PrismaClientKnownRequestError) {
+        logger.debug(error, "error classs nhi");
+        logger.debug(error.cause, "errro .code");
         throw new AppError({
           message: error.message,
           status: 500,
@@ -46,7 +49,7 @@ export const asyncGraphqlAPIHandeler =
           // detail: error.issues[0],
         });
       }
-      if (error.name === "ReferenceError") {
+      if (error instanceof ReferenceError) {
         const message = isDev ? error.message : "Something went Wrong";
         const code = isDev ? "INTERNAL_ERROR" : "VARIABLE_ERROR";
         throw new AppError({
@@ -56,14 +59,14 @@ export const asyncGraphqlAPIHandeler =
           details: error.stack,
         });
       }
-      if (error.name === "TypeError") {
+      if (error instanceof TypeError) {
         throw new AppError({
           message: error.message,
           status: 500,
           code: "USER_NOT_FOUND_ERROR",
         });
       }
-      if (error.name === "ZodError") {
+      if (error instanceof ZodError) {
         logger.debug(error.issues[0].message, "error in zod ");
         throw new AppError({
           message: error.issues[0].message,
@@ -72,7 +75,7 @@ export const asyncGraphqlAPIHandeler =
           details: error.issues[0],
         });
       }
-      if (error.name === "TokenExpiredError") {
+      if (error instanceof TokenExpiredError) {
         throw new AppError({
           message: error.message,
           status: 401,
@@ -82,19 +85,19 @@ export const asyncGraphqlAPIHandeler =
         });
       }
 
-      if (error.consumedPoints >= 6) {
-        logger.debug(error, "in get userssssssss", error.name);
-        const retryAfter = Math.ceil(error.msBeforeNext / 1000 / 60);
-        throw new AppError({
-          message: `Too many requests. Try again after ${retryAfter} Minutes.`,
-          code: error.code ?? "RATE_LIMIT_ERROR",
-          status: 429,
-          cause: error,
-          details: {
-            retryAfter,
-          },
-        });
-      }
+      // if (error.consumedPoints >= 6) {
+      //   logger.debug(error, "in get userssssssss", error.name);
+      //   const retryAfter = Math.ceil(error.msBeforeNext / 1000 / 60);
+      //   throw new AppError({
+      //     message: `Too many requests. Try again after ${retryAfter} Minutes.`,
+      //     code: error.code ?? "RATE_LIMIT_ERROR",
+      //     status: 429,
+      //     cause: error,
+      //     details: {
+      //       retryAfter,
+      //     },
+      //   });
+      // }
       // throw error;
       if (error instanceof Error) {
         // logger.debug(error.cause, "errro .code in instance")
@@ -125,12 +128,12 @@ export const asyncHandeler =
   };
 
 export const asyncSocketAPIHandeler =
-  <T>(method: SocketMethod<T>) =>
+  <T, R>(method: SocketMethod<T, R>) =>
   async (
     socket: socketInterface,
     payload: userProps,
     data: T,
-    callback: (data: socketCallback<SendMessageData>) => void,
+    callback: (data: socketCallback<R>) => void,
   ) => {
     try {
       return await method(socket, payload, data, callback);

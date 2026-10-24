@@ -1,3 +1,4 @@
+import { GraphqlResponseObject } from "@/utils/types/base.type.js";
 import {
   createStoryMutation,
   deleteStoryMutation,
@@ -10,10 +11,11 @@ import {
   getAllStoriesQuery,
   getStoryByIdQuery,
 } from "../controllers/Story/story.query.js";
+import { StoryResponseType } from "@/utils/types/graphqltypes/story.type.js";
 
 const Storyresolver = {
   storyResponseData: {
-    __resolveType(obj) {
+    __resolveType(obj: GraphqlResponseObject<StoryResponseType>) {
       // multiple stories
       if (obj.stories) {
         return "StoriesData";

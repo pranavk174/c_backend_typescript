@@ -27,14 +27,20 @@ import {
   userProps,
 } from "../../utils/types.js";
 import { StorySeen } from "../../utils/types/story.type.js";
+import { message } from "@prisma/client";
 
 const { story, story_likes, chat, chat_member } = prisma;
-export const replyStory = asyncSocketAPIHandeler(
+export const replyStory = asyncSocketAPIHandeler<
+  SendMessageData,
+  socketResponse<"message", message[]>
+>(
   async (
     socket: socketInterface,
     payload: userProps,
     data: SendMessageData,
-    callback: (data: socketCallback<socketResponse>) => void,
+    callback: (
+      data: socketCallback<socketResponse<"message", message[]>>,
+    ) => void,
   ) => {
     const { id, content } = data;
     logger.debug(payload, "payloadddddd");
@@ -57,7 +63,7 @@ HAVING COUNT(DISTINCT member_id) = 2;
 
     // logger.debug(chatid, "chatdataaaaaaa", storyData);
 
-    let reply = null;
+    let reply: message[];
     if (!chatid || chatid.length === 0) {
       const chatData = await chat.create({
         data: {
@@ -88,17 +94,14 @@ chat_id ,sender_id ,content ,story_id, created_at) values(${chatData.id} , ${pay
 
           `;
     } else {
-      reply = await prisma.$queryRaw`
+      reply = await prisma.$queryRaw<message[]>`
 insert into message (
 chat_id ,sender_id ,content ,story_id, created_at) values(${chatid[0].chat_id} , ${payload.userId} , ${content}, ${storyData.id}, NOW()
 )
   `;
     }
-    if (!reply) {
-      throw new Error("Failed to send reply");
-    }
 
-    const { notification } = await createNotification(
+    const notification = await createNotification(
       storyData.user_id,
       payload,
       "new_message",
@@ -106,7 +109,9 @@ chat_id ,sender_id ,content ,story_id, created_at) values(${chatid[0].chat_id} ,
     );
 
     const receiverSocketId = chatSocketIds.get(String(storyData.user_id));
-    socket.to(receiverSocketId).emit(NEW_NOTIFICATION, notification);
+    socket
+      .to(receiverSocketId)
+      .emit(NEW_NOTIFICATION, notification?.notification);
 
     // const reply = await prisma.chat_member.
 
@@ -114,7 +119,9 @@ chat_id ,sender_id ,content ,story_id, created_at) values(${chatid[0].chat_id} ,
       message: "Reply added successfully",
       status: 201,
       success: true,
-      data: reply,
+      data: {
+        message: reply,
+      },
     });
   },
 );
@@ -172,10 +179,6 @@ export const seenStory = asyncSocketAPIHandeler(
       },
     });
 
-    if (!seen) {
-      throw new Error("Failed to mark the story as seen");
-    }
-
     const receiverSocketId = getSockets(storyData.user_id);
     const res = getSocketmembers(storyData.user_id);
     logger.debug(
@@ -202,12 +205,15 @@ export const seenStory = asyncSocketAPIHandeler(
     });
   },
 );
-export const likeStory = asyncSocketAPIHandeler(
+export const likeStory = asyncSocketAPIHandeler<
+  SendMessageData,
+  socketResponse<"message", string>
+>(
   async (
     socket: socketInterface,
     payload: userProps,
     data: SendMessageData,
-    callback: (data: socketCallback<socketResponse>) => void,
+    callback: (data: socketCallback<socketResponse<"message", string>>) => void,
   ) => {
     const { id, like, reaction_id } = data;
     if (!id || like === null || like === undefined) {
@@ -277,7 +283,7 @@ export const likeStory = asyncSocketAPIHandeler(
       });
 
     if (like) {
-      const { notification } = await createNotification(
+      const notification = await createNotification(
         storyData.user_id,
         payload,
         "story_like",
@@ -292,11 +298,13 @@ export const likeStory = asyncSocketAPIHandeler(
 
       notificationNamespace
         .to(notificationRecieverSocketId)
-        .emit(NEW_NOTIFICATION, notification);
+        .emit(NEW_NOTIFICATION, notification?.notification);
     }
 
     return callback({
-      message: `Story ${like === true ? "liked" : "unliked"} successfully`,
+      data: {
+        message: `Story ${like === true ? "liked" : "unliked"} successfully`,
+      },
       status: 200,
       success: true,
     });

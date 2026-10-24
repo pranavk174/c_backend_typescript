@@ -20,7 +20,25 @@ export interface userProps {
   email: string;
   device_id: string;
 }
-export interface socketInterface extends Socket {
+// export interface socketInterface extends Socket {
+//   user: userProps;
+// }
+
+export interface SocketData {
+  user: userProps;
+}
+
+interface CustomEvents {
+  [event: string]: (...args: any[]) => void;
+}
+export type socketInterface = Socket<
+  CustomEvents,
+  CustomEvents,
+  CustomEvents,
+  SocketData
+>;
+
+export interface SocketData {
   user: userProps;
 }
 
@@ -69,15 +87,17 @@ export interface SendMessageData {
   id: number;
   media: mediaProps[];
   chat_ids: number[];
+  typing: boolean;
   client_msg_id: string;
   reciever_ids: number[];
-  chat_type?: string;
+  chat_type: string;
   message_ids: number[];
-  react_id?: number;
-  chat_id?: number;
-  reciever_id?: number;
+  react_id: number;
+  chat_id: number;
+  reciever_id: number;
   like: boolean;
   reaction_id: number;
+  chatType: string;
 }
 
 export interface chatProps {
@@ -133,10 +153,18 @@ export interface chat_memberProps {
 //   message: messageProps;
 // }
 
-export interface socketResponse {
-  message?: messageProps;
-  message_ids?: number[];
-}
+// export interface socketResponse<T, R> {
+//   // message?: messageProps;
+//   // message_ids?: number[];
+
+//   R: T;
+// }
+
+export type socketResponse<
+  T extends string = string,
+  R = unknown,
+  Optional extends boolean = true,
+> = Optional extends true ? { [K in T]?: R } : { [K in T]: R };
 
 export interface AttachmentProps extends mediaProps {
   id: number;
@@ -148,4 +176,17 @@ export interface mediaProps {
   file_type: string;
   file_name: string;
   file_size: number;
+}
+
+type MailError = Error & {
+  code?: string;
+  rejected?: unknown;
+};
+
+export function isMailError(err: unknown): err is MailError {
+  return (
+    err instanceof Error &&
+    "code" in err &&
+    (typeof err.code === "string" || err.code === undefined)
+  );
 }

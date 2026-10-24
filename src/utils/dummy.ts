@@ -233,13 +233,13 @@ export interface Notification {
   color?: string;
 }
 
-export interface User {
-  id: number;
-  name: string;
-  chat_id: number | null;
-  username: string;
-  profile_pic?: string;
-}
+// export interface User {
+//   id: number;
+//   name: string;
+//   chat_id: number | null;
+//   username: string;
+//   profile_pic?: string;
+// }
 
 export interface memberProps {
   member_id: number;

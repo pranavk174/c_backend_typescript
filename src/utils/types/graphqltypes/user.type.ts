@@ -164,9 +164,11 @@ export interface Cookie {
 }
 
 export interface OtpData {
-  otp_id: number | null;
+  otp_id?: number;
   email: string;
-  otp: string;
+  otp: string | null;
   created_at: Date;
   expires_at: Date;
 }
+
+export type UserResponseType = "verifyOtpData" | "User" | "Users";

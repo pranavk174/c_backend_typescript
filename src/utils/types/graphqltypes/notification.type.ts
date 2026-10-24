@@ -8,3 +8,5 @@ export interface notificationInputProps {
     notification_ids: number[];
   };
 }
+
+export type NotificationResponseType = "notifications" | "notification";

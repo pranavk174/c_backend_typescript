@@ -14,9 +14,11 @@ import {
   updateUserMutation,
   verifyOtpMutation,
 } from "../controllers/User/user.mutation.js";
+import { GraphqlResponseObject } from "@/utils/types/base.type.js";
+import { UserResponseType } from "@/utils/types/graphqltypes/user.type.js";
 const userResolvers = {
   ResponseData: {
-    __resolveType(obj) {
+    __resolveType(obj: GraphqlResponseObject<UserResponseType>) {
       if (obj._responseType === "verifyOtpData") {
         return "verifyOtpData";
       }

@@ -1,20 +1,20 @@
-import { chatSocketIds } from "../utils/socket.helper.js";
 import { createPubSub } from "graphql-yoga";
 import bcrypt from "bcrypt";
 import { Prisma, PrismaClient } from "@prisma/client";
-import prisma from "../prisma/prisma-client.js";
-import { logger } from "../utils/logger.js";
-import { AppError, BadRequestError } from "./errorHandler.js";
-import { numberex, stringex } from "./regex.js";
-import { asyncHandeler } from "./util.js";
+
+import { JwtPayload } from "jsonwebtoken";
+import prisma from "@/prisma/prisma-client.js";
+import { logger } from "@/utils/logger.js";
 import {
-  chat_memberProps,
-  chatProps,
   messageProps,
   userProps,
-} from "../utils/types.js";
-import { OtpData } from "../utils/types/graphqltypes/user.type.js";
-import { JwtPayload } from "jsonwebtoken";
+  chat_memberProps,
+  chatProps,
+} from "@/utils/types.js";
+import { OtpData } from "@/utils/types/graphqltypes/user.type.js";
+import { BadRequestError, AppError } from "./errorHandler.js";
+import { asyncHandeler } from "./util.js";
+import { chatSocketIds } from "@/utils/socket.helper.js";
 export const checkMessageExists = async (
   prisma: PrismaClient,
   message_ids: number[],
@@ -100,7 +100,7 @@ export const checkMemeberExists = async (
   prisma: PrismaClient,
   chat_id: number,
   user_id: number,
-) => {
+): Promise<chat_memberProps[]> => {
   // logger.debug(chat_id, user_id, "======");
   const data = await prisma.$queryRaw<chat_memberProps[]>`
 
@@ -112,7 +112,7 @@ export const checkMemeberExists = async (
 
   `;
 
-  return data[0];
+  return data;
 };
 
 export const checkChatExists = async (
@@ -200,7 +200,7 @@ export const createChat = asyncHandeler<
 );
 
 export const chekOTP = async (otp: string, record: OtpData) => {
-  if (!record) {
+  if (!record.otp) {
     throw new AppError({
       message: "OTP not found",
       status: 404,

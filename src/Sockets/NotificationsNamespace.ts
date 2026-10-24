@@ -1,23 +1,24 @@
-import { seenNotification } from "../controller/Socket/notification.controller.js";
-import { io } from "../index.js";
+import { Socket } from "socket.io";
 
-import { SEEN_NOTIFICATION } from "../utils/events.js";
-import { logger } from "../utils/logger.js";
+import { seenNotification } from "@/controller/Socket/notification.controller.js";
+import { io } from "@/index.js";
+import { SEEN_NOTIFICATION } from "@/utils/events.js";
+import { logger } from "@/utils/logger.js";
 import {
-  chatSocketIds,
   notificationSocketIds,
   onlineUsers,
   sendUsers,
-  storySocketIds,
-} from "../utils/socket.helper.js";
+  chatSocketIds,
+} from "@/utils/socket.helper.js";
+import { socketInterface } from "@/utils/types.js";
 
-export const NotificationSocket = (socket) => {
+export const NotificationSocket = (socket: socketInterface) => {
   // logger.debug("User connected:", socket.user, socket.id);
-  const payload = socket.user;
+  const payload = socket.data.user;
   notificationSocketIds.set(payload.userId.toString(), socket.id);
   onlineUsers.add(payload.userId.toString());
 
-  sendUsers(io, payload);
+  // sendUsers(io, payload);
 
   logger.debug(
     notificationSocketIds,
@@ -37,6 +38,6 @@ export const NotificationSocket = (socket) => {
     chatSocketIds.delete(String(payload.userId));
 
     // socket.emit(ONLINE_USERS, Array.from(onlineUsers));
-    sendUsers(io, payload);
+    sendUsers(socket, payload);
   });
 };

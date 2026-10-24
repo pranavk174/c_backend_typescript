@@ -5,15 +5,14 @@ import {
   reactMessage,
   editMessage,
   sendTypingEvent,
-} from "../controller/Socket/controller.js";
-import { seenNotification } from "../controller/Socket/notification.controller.js";
+} from "@/controller/Socket/controller.js";
+import { seenNotification } from "@/controller/Socket/notification.controller.js";
 import {
   replyStory,
   seenStory,
   likeStory,
-} from "../controller/Socket/story.controller.js";
-import { io } from "../index.js";
-
+} from "@/controller/Socket/story.controller.js";
+import { io } from "@/index.js";
 import {
   SEND_MESSAGE,
   CHAT_JOINED,
@@ -28,20 +27,20 @@ import {
   SEEN_NOTIFICATION,
   START_TYPING,
   STOP_TYPING,
-} from "../utils/events.js";
-import { logger } from "../utils/logger.js";
+} from "@/utils/events.js";
+import { logger } from "@/utils/logger.js";
 import {
   chatSocketIds,
   onlineUsers,
   sendUsers,
   joinChat,
   leaveChat,
-} from "../utils/socket.helper.js";
-import { socketInterface } from "../utils/types.js";
+} from "@/utils/socket.helper.js";
+import { socketInterface } from "@/utils/types.js";
 
 export const chatSockets = (socket: socketInterface) => {
   // logger.debug("User connected:", socket.user, socket.id);
-  const payload = socket.user;
+  const payload = socket.data.user;
   chatSocketIds.set(payload.userId.toString(), socket.id);
   onlineUsers.add(payload.userId.toString());
 
@@ -130,8 +129,8 @@ export const chatSockets = (socket: socketInterface) => {
     chatSocketIds.delete(String(payload.userId));
 
     // socket.emit(ONLINE_USERS, Array.from(onlineUsers));
-    sendUsers(io, payload);
+    sendUsers(socket, payload);
   });
 
-  return socket.user;
+  return socket.data.user;
 };

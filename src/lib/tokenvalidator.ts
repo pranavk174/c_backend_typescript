@@ -1,10 +1,8 @@
 import jwt from "jsonwebtoken";
 import { GraphQLError } from "graphql";
-import prisma from "../prisma/prisma-client.js";
+import prisma from "@/prisma/prisma-client.js";
+import { DeviceProps, Cookie } from "@/utils/types/graphqltypes/user.type.js";
 import { AppError } from "./errorHandler.js";
-import { logger } from "../utils/logger.js";
-import { Cookie, DeviceProps } from "../utils/types/graphqltypes/user.type.js";
-import { deviceConfig } from "../utils/dummy.js";
 
 export const errorHandler = (
   message: string,

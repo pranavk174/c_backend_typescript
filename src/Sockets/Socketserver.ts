@@ -1,7 +1,7 @@
 import { Server } from "socket.io";
 import { Express } from "express";
 import http from "http";
-import { allowedOrigins } from "../lib/helpers.js";
+import { allowedOrigins } from "@/lib/helpers.js";
 
 export const socketServer = (app: Express) => {
   const server = http.createServer(app);

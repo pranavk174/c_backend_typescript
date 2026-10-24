@@ -8,7 +8,7 @@ import { logger } from "./utils/logger.js";
 import prisma from "./prisma/prisma-client.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-
+import { Request, Response } from "express";
 import { instrument } from "@socket.io/admin-ui";
 
 // import http from "http";
@@ -105,7 +105,15 @@ app.get("/health", async (req, res) => {
   }
 });
 
-app.use("/graphql", yoga);
+app.use("/graphql", (req, res, next) => {
+  const handler = yoga as unknown as (
+    request: Request,
+    response: Response,
+    next: express.NextFunction,
+  ) => void | Promise<void>;
+
+  return handler(req, res, next);
+});
 server.listen(process.env.PORT, () => {
   logger.debug("Server + Socket.IO started on port:", process.env.PORT);
 });

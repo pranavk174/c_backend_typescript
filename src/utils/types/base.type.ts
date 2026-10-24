@@ -2,6 +2,7 @@ import type { GraphQLResolveInfo } from "graphql";
 import { GraphQLSchemaWithContext } from "graphql-yoga";
 import { userProps } from "../types.js";
 import { Socket } from "socket.io";
+import { JwtPayload } from "jsonwebtoken";
 export type asyncGraphQlMethodsType<T> = (
   parent: unknown,
   input: T,
@@ -17,9 +18,19 @@ export interface socketCallback<T> {
   error?: string;
 }
 
-export interface socketInterface extends Socket {
-  user: userProps;
+export interface SocketData {
+  user: userProps | JwtPayload;
 }
+
+interface CustomEvents {
+  [event: string]: (...args: any[]) => void;
+}
+export type socketInterface = Socket<
+  CustomEvents,
+  CustomEvents,
+  CustomEvents,
+  SocketData
+>;
 
 export type SocketMethod<T, R> = (
   socket: socketInterface,
@@ -49,4 +60,9 @@ export interface Seen {
   seen_id: number;
   user_id: number;
   seen_at: Date;
+}
+
+export interface GraphqlResponseObject<T> {
+  _responseType: T;
+  [key: string]: unknown;
 }

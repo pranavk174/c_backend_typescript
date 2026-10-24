@@ -13,19 +13,6 @@ import {
 } from "../controllers/Privacy/privacy.query.js";
 
 export const privacyResolvers = {
-  //   privacyResponseData: {
-  //     __resolveType(obj) {
-  //       // multiple stories
-  //       if (obj.stories) {
-  //         return "PrivacyusersData";
-  //       }
-  //       // single story — check key existence since text_data can be null
-  //       if ("id" in obj) {
-  //         return "PrivacySettingsData";
-  //       }
-  //       return null;
-  //     },
-  //   },
   Query: {
     getPrivacySettings: getPrivacySettingsQuery,
     getPrivacyUsers: getPrivacUsersQuery,

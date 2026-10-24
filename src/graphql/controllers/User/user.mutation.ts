@@ -8,7 +8,7 @@ import {
   otpGenrator,
 } from "@/lib/util.js";
 import prisma from "@/prisma/prisma-client.js";
-import { User } from "@/utils/dummy.js";
+
 import { logger } from "@/utils/logger.js";
 import { sendMail } from "@/utils/nodemainler.js";
 import {
@@ -20,9 +20,12 @@ import {
   PersonalizationInput,
   AccountStatus,
   BlockUserInput,
+  Otp,
+  OtpData,
+  User,
 } from "@/utils/types/graphqltypes/user.type.js";
 import { CookieOptions } from "express";
-import { jwt } from "zod";
+import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 /* eslint-disable no-undef */
 export const sendOtpMutation = asyncGraphqlAPIHandeler(
@@ -159,6 +162,14 @@ export const verifyOtpMutation = asyncGraphqlAPIHandeler(
         where: { email },
       });
 
+      if (!record || typeof record.otp === null) {
+        return {
+          message: "No OTP found ",
+          status: 400,
+          success: false,
+        };
+      }
+
       await chekOTP(otp, record);
 
       // cleanup
@@ -253,6 +264,13 @@ export const verifyOtpMutation = asyncGraphqlAPIHandeler(
       where: { email },
     });
 
+    if (!record || typeof record.otp === null) {
+      return {
+        message: "No OTP found ",
+        status: 400,
+        success: false,
+      };
+    }
     await chekOTP(otp, record);
 
     const is_verified = await prisma.register.update({
@@ -340,7 +358,7 @@ export const createUserMutation = asyncGraphqlAPIHandeler(
         },
       });
 
-      await sendMail(email, otp);
+      await sendMail(email, otp.toString());
 
       throw new AppError({
         message: "User is not verified , Please Verify Otp Sent Successfully",

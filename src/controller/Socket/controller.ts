@@ -47,12 +47,18 @@ import {
   START_TYPING,
   STOP_TYPING,
 } from "@/utils/events.js";
-export const sendMessage = asyncSocketAPIHandeler(
+import { message } from "@prisma/client";
+export const sendMessage = asyncSocketAPIHandeler<
+  SendMessageData,
+  socketResponse<"message", messageProps>
+>(
   async (
     socket: socketInterface,
     payload: userProps,
     data: SendMessageData,
-    callback: (data: socketCallback<socketResponse>) => void,
+    callback: (
+      data: socketCallback<socketResponse<"message", messageProps>>,
+    ) => void,
   ) => {
     logger.debug(data, "new messageeeeee");
 
@@ -269,7 +275,10 @@ export const sendMessage = asyncSocketAPIHandeler(
   },
 );
 
-export const replyMessage = asyncSocketAPIHandeler(
+export const replyMessage = asyncSocketAPIHandeler<
+  SendMessageData,
+  socketResponse
+>(
   async (
     socket: socketInterface,
     payload: userProps,
@@ -301,7 +310,7 @@ export const replyMessage = asyncSocketAPIHandeler(
     //   throw new Error("Message not Found");
     // }
 
-    let updated: messageProps[] = await prisma.$queryRaw`
+    let updated = await prisma.$queryRaw<messageProps[]>`
     insert into message (content,sender_id, reply_to_message_id ,chat_id) values(${content},${payload.userId},${message_id} , ${messageData[0].chat_id}) returning *
     
     `;
@@ -352,7 +361,10 @@ export const replyMessage = asyncSocketAPIHandeler(
   },
 );
 
-export const reactMessage = asyncSocketAPIHandeler(
+export const reactMessage = asyncSocketAPIHandeler<
+  SendMessageData,
+  socketResponse
+>(
   async (
     socket: socketInterface,
     payload: userProps,
@@ -439,12 +451,17 @@ updated_at = CURRENT_TIMESTAMP returning *;
   },
 );
 
-export const seenMessage = asyncSocketAPIHandeler(
+export const seenMessage = asyncSocketAPIHandeler<
+  SendMessageData,
+  socketResponse<"message_ids", number[]>
+>(
   async (
     socket: socketInterface,
     payload: userProps,
     data: SendMessageData,
-    callback: (data: socketCallback<socketResponse>) => void,
+    callback: (
+      data: socketCallback<socketResponse<"message_ids", number[]>>,
+    ) => void,
   ) => {
     const { message_ids, chat_id, reciever_id } = data;
     // logger.debug(data, "dataaaaaaaaaaa");
@@ -504,12 +521,17 @@ export const seenMessage = asyncSocketAPIHandeler(
   },
 );
 
-export const editMessage = asyncSocketAPIHandeler(
+export const editMessage = asyncSocketAPIHandeler<
+  SendMessageData,
+  socketResponse<"message", messageProps>
+>(
   async (
     socket: socketInterface,
     payload: userProps,
     data: SendMessageData,
-    callback: (data: socketCallback<socketResponse>) => void,
+    callback: (
+      data: socketCallback<socketResponse<"message", messageProps>>,
+    ) => void,
   ) => {
     logger.debug(data, "seen dataaa");
     const { message_ids, content, chat_id } = data;
@@ -587,16 +609,19 @@ WHERE id = ${message_id}    returning *
   },
 );
 
-export const sendTypingEvent = asyncSocketAPIHandeler(
+export const sendTypingEvent = asyncSocketAPIHandeler<
+  SendMessageData,
+  socketResponse
+>(
   async (
     socket: socketInterface,
     payload: userProps,
     data: SendMessageData,
     callback: (data: socketCallback<socketResponse>) => void,
-    typing: boolean,
+    // typing: boolean,
   ) => {
     logger.debug(data, "new messageeeeee");
-    const { reciever_ids, chat_id } = data;
+    const { reciever_ids, chat_id, typing } = data;
 
     if (!data) {
       return callback({

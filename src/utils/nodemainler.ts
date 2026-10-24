@@ -1,7 +1,9 @@
 /* eslint-disable no-undef */
 import nodemailer from "nodemailer";
+
 import { logger } from "./logger.js";
 import { AppError } from "../lib/errorHandler.js";
+import { isMailError } from "./types.js";
 // Create a transporter using SMTP
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
@@ -17,7 +19,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export const sendMail = async (email, otp) => {
+export const sendMail = async (email: string, otp: string) => {
   try {
     logger.debug(
       { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
@@ -36,45 +38,49 @@ export const sendMail = async (email, otp) => {
     }
 
     return false;
-  } catch (err) {
+  } catch (err: unknown) {
     logger.debug(err, "error in send mail......");
 
-    switch (err.code) {
-      case "ECONNECTION":
-        throw new AppError({
-          message: err.message,
-          status: 500,
-          code: err.code,
-        });
-      case "ETIMEDOUT":
-        throw new AppError({
-          message: err.message,
-          status: 500,
-          code: err.code,
-        });
+    if (isMailError(err)) {
+      switch (err.code) {
+        case "ECONNECTION":
+        case "ETIMEDOUT":
+        case "EAUTH":
+          throw new AppError({
+            message: err.message,
+            status: 500,
+            code: err.code,
+          });
 
-      case "EAUTH":
-        throw new AppError({
-          message: err.message,
-          status: 500,
-          code: err.code,
-        });
-      case "EENVELOPE":
-        throw new AppError({
-          message: err.message,
-          status: 500,
-          code: err.code,
-          details: err.rejected,
-        });
-      default:
-        throw new AppError({
-          message: err.message,
-          status: 500,
-          code: err.code,
-          details: err.rejected,
-        });
+        case "EENVELOPE":
+          throw new AppError({
+            message: err.message,
+            status: 500,
+            code: err.code,
+            details: err.rejected,
+          });
+
+        default:
+          throw new AppError({
+            message: err.message,
+            status: 500,
+            code: err.code,
+            details: err.rejected,
+          });
+      }
     }
 
-    // return false;
+    // Agar error standard Error hai, lekin mail error nahi hai
+    if (err instanceof Error) {
+      throw new AppError({
+        message: err.message,
+        status: 500,
+      });
+    }
+
+    throw new AppError({
+      message: "An unknown error occurred while sending mail",
+      status: 500,
+    });
   }
 };

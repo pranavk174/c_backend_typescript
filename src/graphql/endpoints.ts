@@ -7,10 +7,9 @@ import {
   inputValidatorDirective,
 } from "./custom-directives/directives.js";
 import { useCookies } from "@whatwg-node/server-plugin-cookies";
-import mergedResolver from "./resolvers/merged.resolver.js";
-import { AppError } from "../lib/errorHandler.js";
-import { logger } from "../utils/logger.js";
+
 import { Response, Request } from "express";
+import mergedResolver from "./resolvers/merged.resolver.js";
 
 const baseSchema = readFileSync(
   new URL("./schema/base.schema.gql", import.meta.url),
@@ -58,9 +57,11 @@ schema = inputValidatorDirective(schema);
 schema = isChatMemberDirective(schema);
 schema = authDirectiveTransformer(schema);
 
-export const yoga = createYoga({
+export const yoga = createYoga<{
+  req: Request;
+  res: Response;
+}>({
   schema,
-
   graphqlEndpoint: "/graphql",
 
   context: ({ req, res }: { req: Request; res: Response }) => ({

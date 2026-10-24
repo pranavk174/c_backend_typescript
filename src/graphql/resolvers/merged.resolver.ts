@@ -5,6 +5,7 @@ import { notificationResolver } from "./notification.resolver.js";
 import { pubsub } from "../../lib/helpers.js";
 import chatResolver from "./chat.resolver.js";
 import { GraphQLBigInt } from "graphql-scalars";
+import { userProps } from "@/utils/types.js";
 const mergedResolvers = {
   BigInt: GraphQLBigInt,
 
@@ -24,11 +25,11 @@ const mergedResolvers = {
   },
   Subscription: {
     newMessage: {
-      subscribe: (_, { chat_id }) => {
+      subscribe: (_: unknown, { chat_id }: { chat_id: number }) => {
         return pubsub.subscribe(`CHAT_${chat_id}`);
       },
 
-      resolve: (payload) => payload,
+      resolve: (payload: userProps) => payload,
     },
   },
   // ResponseData: {

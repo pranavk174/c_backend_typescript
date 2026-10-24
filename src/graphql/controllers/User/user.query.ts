@@ -1,6 +1,7 @@
-import { AppError } from "../../../lib/errorHandler.js";
-import prisma from "../../../prisma/prisma-client.js";
-import { asyncGraphqlAPIHandeler } from "../../../lib/util.js";
+import { AppError } from "@/lib/errorHandler.js";
+import { asyncGraphqlAPIHandeler } from "@/lib/util.js";
+import prisma from "@/prisma/prisma-client.js";
+
 export const getUserQuery = asyncGraphqlAPIHandeler(async (_, __, context) => {
   const payload = context.user;
   const data = await prisma.users.findFirst({

@@ -1,6 +1,6 @@
+import { logger } from "@/utils/logger.js";
 import { z } from "zod";
 import { AppError } from "./errorHandler.js";
-import { logger } from "../utils/logger.js";
 
 const schemas = {
   string: z.string().min(1, "Field is required"),

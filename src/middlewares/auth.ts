@@ -5,42 +5,56 @@ import cors from "cors";
 import prisma from "../prisma/prisma-client.js";
 import { allowedOrigins } from "../lib/helpers.js";
 import { logger } from "../utils/logger.js";
+import { Request, Response } from "express";
+import { ExtendedError, Socket } from "socket.io";
+import { User } from "@/utils/types/graphqltypes/user.type.js";
+import { socketInterface } from "@/utils/types/base.type.js";
 
-export const authMiddleware = (req, res, next) => {
+export const authMiddleware = (
+  req: Request,
+  res: Response,
+  next: (value?: unknown) => void,
+) => {
   try {
     const token = req.cookies.token;
 
     if (!token) {
-      req.user = null;
+      // req.user = null;
       return next();
     }
 
     // eslint-disable-next-line no-undef
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    req.user = decoded;
+    // req.user = decoded;
 
     // logger.debug(decoded, req.user, "req. user dataaaa.");
 
     next();
   } catch (error) {
     logger.debug(error, "errorrrrrr in middleware...");
-    req.user = null;
+    // req.user = null;
     next();
   }
 };
 
-export const socketAuthMiddleware = async (socket, next) => {
+export const socketAuthMiddleware = async (
+  socket: socketInterface,
+  next: (err?: ExtendedError | undefined) => void,
+) => {
   try {
     const cookies = cookie.parse(socket.handshake.headers.cookie || "");
 
     // logger.debug(cookies, "cookies data in auth middleware");
     const token = cookies.accessToken;
+    if (!token) {
+      throw new Error("No Token Provided");
+    }
     // logger.debug(token, "token dataa..", cookies);
 
     const payload = await validateCookie(token);
 
-    const profile_pic = await prisma.$queryRaw`
+    const profile_pic = await prisma.$queryRaw<User[]>`
     
     select 
     
@@ -55,7 +69,7 @@ export const socketAuthMiddleware = async (socket, next) => {
     payload.profile_pic = profile_pic[0].profile_pic;
     payload.name = profile_pic[0].name;
     // logger.debug(payload , "middleware payloaddd")
-    socket.user = payload;
+    socket.data.user = payload;
 
     next();
   } catch (error) {
@@ -64,7 +78,7 @@ export const socketAuthMiddleware = async (socket, next) => {
     //   status: 401,
     //   success: false,
     // };
-    next(new Error(error.message));
+    if (error instanceof Error) next(new Error(error.message));
   }
 };
 

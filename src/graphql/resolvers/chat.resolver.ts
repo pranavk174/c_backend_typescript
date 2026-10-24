@@ -17,9 +17,11 @@ import {
   sendMessageMutation,
   setWallpaperMutation,
 } from "../controllers/chat/chat.mutation.js";
+import { GraphqlResponseObject } from "@/utils/types/base.type.js";
+import { ChatResponseType } from "@/utils/types/graphqltypes/chat.type.js";
 const chatResolver = {
   ChatResponse: {
-    __resolveType(obj) {
+    __resolveType(obj: GraphqlResponseObject<ChatResponseType>) {
       // logger.debug(obj, "object dataaa");
       if (obj._responseType === "Emojis") {
         return "Emojis";

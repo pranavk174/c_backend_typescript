@@ -5,6 +5,8 @@ import { JwtPayload } from "jsonwebtoken";
 export interface chatArgumentProps {
   member_id: number;
   url: string;
+  chat_id: number;
+  user_id: number;
 }
 
 export interface chatInputProps {
@@ -46,3 +48,11 @@ export interface ctxProps extends YogaInitialContext {
 export interface wallpaperProps {
   url: string;
 }
+
+export type ChatResponseType =
+  | "Emojis"
+  | "SingleChat"
+  | "newChat"
+  | "AllChats"
+  | "members"
+  | "Wallpaper";
