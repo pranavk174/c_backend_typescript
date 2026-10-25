@@ -1,6 +1,6 @@
 import cron from "node-cron";
 
-import prisma from "../prisma/prisma-client.js";
+import prisma from "../../prisma/prisma-client.js";
 import { logger } from "@/utils/logger.js";
 cron.schedule("0 0 * * *", async () => {
   logger.debug("triggered cronjob");

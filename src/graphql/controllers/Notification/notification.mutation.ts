@@ -1,7 +1,7 @@
 /* eslint-disable no-undef */
 import { AppError } from "@/lib/errorHandler.js";
 import { asyncGraphqlAPIHandeler } from "@/lib/util.js";
-import prisma from "@/prisma/prisma-client.js";
+import prisma from "../../../../prisma/prisma-client.js";
 import { logger } from "@/utils/logger.js";
 import { notificationInputProps } from "@/utils/types/graphqltypes/notification.type.js";
 import { Notification } from "@/utils/types/notification.types.js";

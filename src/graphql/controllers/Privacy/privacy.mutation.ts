@@ -2,7 +2,7 @@
 
 import { AppError } from "@/lib/errorHandler.js";
 import { asyncGraphqlAPIHandeler } from "@/lib/util.js";
-import prisma from "@/prisma/prisma-client.js";
+import prisma from "../../../../prisma/prisma-client.js";
 import {
   privacyArgumentProps,
   privacyInputProps,

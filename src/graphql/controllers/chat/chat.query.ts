@@ -1,5 +1,5 @@
 import { asyncGraphqlAPIHandeler } from "@/lib/util.js";
-import prisma from "@/prisma/prisma-client.js";
+import prisma from "../../../../prisma/prisma-client.js";
 import { onlineUsers } from "@/utils/socket.helper.js";
 import {
   messageProps,

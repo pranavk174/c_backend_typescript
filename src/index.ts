@@ -5,7 +5,7 @@ import { yoga } from "./graphql/endpoints.js";
 // import { Server } from "socket.io";
 import express from "express";
 import { logger } from "./utils/logger.js";
-import prisma from "./prisma/prisma-client.js";
+import prisma from "../prisma/prisma-client.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import { Request, Response } from "express";

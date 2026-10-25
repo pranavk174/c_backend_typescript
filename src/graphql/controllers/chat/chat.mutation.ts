@@ -15,7 +15,7 @@ import {
   chatInputProps,
 } from "@/utils/types/graphqltypes/chat.type.js";
 import { Prisma } from "@prisma/client";
-import prisma from "../../../prisma/prisma-client.js";
+import prisma from "../../../../prisma/prisma-client.js";
 
 export const createNewChatMutation = asyncGraphqlAPIHandeler(
   async (_: unknown, { member_id }: chatArgumentProps, ctx: ctxProps) => {

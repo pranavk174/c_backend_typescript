@@ -2,7 +2,7 @@ export const chatSocketIds = new Map();
 export const notificationSocketIds = new Map();
 export const storySocketIds = new Map();
 export const onlineUsers = new Set();
-import prisma from "../prisma/prisma-client.js";
+import prisma from "../../prisma/prisma-client.js";
 import {
   notification,
   notification_seen,

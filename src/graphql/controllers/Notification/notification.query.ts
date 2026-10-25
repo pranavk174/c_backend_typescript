@@ -1,7 +1,7 @@
 /* eslint-disable no-undef */
 
 import { asyncGraphqlAPIHandeler } from "@/lib/util.js";
-import prisma from "@/prisma/prisma-client.js";
+import prisma from "../../../../prisma/prisma-client.js";
 import { Notification } from "@/utils/types/notification.types.js";
 export const getNotificationQUery = asyncGraphqlAPIHandeler(
   async (_, __, ctx) => {

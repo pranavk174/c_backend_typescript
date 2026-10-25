@@ -1,6 +1,6 @@
 import { AppError } from "@/lib/errorHandler.js";
 import { asyncGraphqlAPIHandeler } from "@/lib/util.js";
-import prisma from "@/prisma/prisma-client.js";
+import prisma from "../../../../prisma/prisma-client.js";
 import { logger } from "@/utils/logger.js";
 import { privacyArgumentProps } from "@/utils/types/graphqltypes/privacy.type.js";
 

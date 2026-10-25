@@ -1,4 +1,4 @@
-import prisma from "../../prisma/prisma-client.js";
+import prisma from "../../../prisma/prisma-client.js";
 import { asyncSocketAPIHandeler } from "../../lib/util.js";
 import {
   NEW_NOTIFICATION,

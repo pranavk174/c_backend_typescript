@@ -7,7 +7,7 @@ import {
   ForbiddenError,
 } from "@/lib/errorHandler.js";
 import { asyncGraphqlAPIHandeler } from "@/lib/util.js";
-import prisma from "@/prisma/prisma-client.js";
+import prisma from "../../../../prisma/prisma-client.js";
 import { logger } from "@/utils/logger.js";
 import { mediaProps, chat_memberProps } from "@/utils/types.js";
 import {

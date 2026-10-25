@@ -1,6 +1,6 @@
 // import prisma from "../../../prisma/prisma-client";
 import { userProps } from "@/utils/types.js";
-import prisma from "../../prisma/prisma-client.js";
+import prisma from "../../../prisma/prisma-client.js";
 
 export const updateLastSeen = async (payload: userProps) => {
   const CURRENT_TIMESTAMP = Date.now();

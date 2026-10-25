@@ -3,7 +3,7 @@ import bcrypt from "bcrypt";
 import { Prisma, PrismaClient } from "@prisma/client";
 
 import { JwtPayload } from "jsonwebtoken";
-import prisma from "@/prisma/prisma-client.js";
+import prisma from "../../prisma/prisma-client.js";
 import { logger } from "@/utils/logger.js";
 import {
   messageProps,

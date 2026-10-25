@@ -7,7 +7,7 @@ import {
   ApiLimiter,
   otpGenrator,
 } from "@/lib/util.js";
-import prisma from "@/prisma/prisma-client.js";
+import prisma from "../../../../prisma/prisma-client.js";
 
 import { logger } from "@/utils/logger.js";
 import { sendMail } from "@/utils/nodemainler.js";
@@ -225,10 +225,12 @@ export const verifyOtpMutation = asyncGraphqlAPIHandeler(
 
       const cookieOptions: CookieOptions = {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: true,
         sameSite: "none",
         path: "/",
       };
+
+      logger.debug(cookieOptions, "cookie option");
 
       context.res.cookie("accessToken", accessToken, {
         ...cookieOptions,
@@ -246,6 +248,7 @@ export const verifyOtpMutation = asyncGraphqlAPIHandeler(
         sameSite: "none",
         path: "/",
       });
+
       return {
         message: "Login Successful",
         status: 200,

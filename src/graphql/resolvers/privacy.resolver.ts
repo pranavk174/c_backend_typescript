@@ -1,4 +1,4 @@
-import prisma from "../../prisma/prisma-client.js";
+import prisma from "../../../prisma/prisma-client.js";
 import { AppError } from "../../lib/errorHandler.js";
 import { validateToken } from "../../lib/tokenvalidator.js";
 import { asyncGraphqlAPIHandeler } from "../../lib/util.js";

@@ -6,7 +6,7 @@ import {
 } from "../../utils/socket.helper.js";
 import { notificationNamespace } from "../../index.js";
 
-import prisma from "../../prisma/prisma-client.js";
+import prisma from "../../../prisma/prisma-client.js";
 import {
   checkMessageExists,
   chekUserExists,

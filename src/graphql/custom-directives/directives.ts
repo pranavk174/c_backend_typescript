@@ -1,5 +1,5 @@
 import { defaultFieldResolver, GraphQLError, GraphQLSchema } from "graphql";
-import prisma from "../../prisma/prisma-client.js";
+import prisma from "../../../prisma/prisma-client.js";
 import { mapSchema, getDirective, MapperKind } from "@graphql-tools/utils";
 
 import {

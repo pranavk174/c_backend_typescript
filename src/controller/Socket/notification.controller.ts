@@ -1,4 +1,4 @@
-import prisma from "../../prisma/prisma-client.js";
+import prisma from "../../../prisma/prisma-client.js";
 import { Prisma } from "@prisma/client";
 
 import { SEEN_NOTIFICATION } from "../../utils/events.js";
